@@ -43,4 +43,4 @@ export interface MaintenanceRecord {
   serviceType: 'repair' | 'routine' | 'tyres' | 'oil';
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile';
