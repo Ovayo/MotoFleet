@@ -7,9 +7,10 @@ interface SidebarProps {
   setView: (view: View) => void;
   isAdmin: boolean;
   onSwitchMode: () => void;
+  hideSwitcher?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitchMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitchMode, hideSwitcher = false }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const adminItems = [
@@ -65,18 +66,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitc
             ))}
           </nav>
 
-          <div className="mt-8 pt-8 border-t border-gray-100">
-            <button
-              onClick={onSwitchMode}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors group"
-            >
-              <div className="text-left">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Mode</p>
-                <p className="text-sm font-bold text-gray-700">{isAdmin ? 'Admin Portal' : 'Driver View'}</p>
-              </div>
-              <span className="text-gray-400 group-hover:text-blue-500 transition-colors">🔄</span>
-            </button>
-          </div>
+          {!hideSwitcher && (
+            <div className="mt-8 pt-8 border-t border-gray-100">
+              <button
+                onClick={onSwitchMode}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors group"
+              >
+                <div className="text-left">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Mode</p>
+                  <p className="text-sm font-bold text-gray-700">{isAdmin ? 'Admin Portal' : 'Driver View'}</p>
+                </div>
+                <span className="text-gray-400 group-hover:text-blue-500 transition-colors">🔄</span>
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="absolute bottom-0 w-full p-6 border-t border-gray-100">

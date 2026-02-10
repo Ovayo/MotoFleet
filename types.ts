@@ -40,7 +40,7 @@ export interface MaintenanceRecord {
   date: string;
   description: string;
   cost: number;
-  serviceType: 'repair' | 'routine' | 'tyres' | 'oil';
+  serviceType: 'repair' | 'routine' | 'tyres' | 'oil' | 'fuel' | 'parts' | 'other';
 }
 
 export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile';

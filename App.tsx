@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS } from './data';
 import { Bike, Driver, Payment, MaintenanceRecord, View } from './types';
 import Sidebar from './components/Sidebar';
@@ -19,8 +19,14 @@ const STORAGE_KEYS = {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<View>('dashboard');
-  const [isAdmin, setIsAdmin] = useState<boolean>(true);
+  // Check URL for dedicated driver portal mode
+  const isDedicatedDriverMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('portal') === 'driver';
+  }, []);
+
+  const [view, setView] = useState<View>(isDedicatedDriverMode ? 'driver-profile' : 'dashboard');
+  const [isAdmin, setIsAdmin] = useState<boolean>(!isDedicatedDriverMode);
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   
   // Initialize state from LocalStorage or use defaults
@@ -93,8 +99,13 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setLoggedDriver(null);
-    setIsAdmin(true);
-    setView('dashboard');
+    // If we came from the dedicated portal, we stay in driver mode
+    if (isDedicatedDriverMode) {
+      setIsAdmin(false);
+    } else {
+      setIsAdmin(true);
+      setView('dashboard');
+    }
   };
 
   const renderView = () => {
@@ -131,7 +142,7 @@ const App: React.FC = () => {
           />
         );
       case 'drivers':
-        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} />;
+        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
         return (
           <PaymentTracking 
@@ -155,7 +166,12 @@ const App: React.FC = () => {
   };
 
   if (!isAdmin && !loggedDriver) {
-    return <DriverLogin onLogin={handleDriverLogin} onBackToAdmin={() => setIsAdmin(true)} />;
+    return (
+      <DriverLogin 
+        onLogin={handleDriverLogin} 
+        onBackToAdmin={isDedicatedDriverMode ? undefined : () => setIsAdmin(true)} 
+      />
+    );
   }
 
   return (
@@ -164,12 +180,13 @@ const App: React.FC = () => {
         activeView={view} 
         setView={setView} 
         isAdmin={isAdmin} 
+        hideSwitcher={isDedicatedDriverMode}
         onSwitchMode={() => {
           if (isAdmin) setIsAdmin(false);
           else handleLogout();
         }}
       />
-      <main className={`flex-1 ${isAdmin ? 'ml-64' : 'ml-0 md:ml-64'} p-4 md:p-8`}>
+      <main className={`flex-1 ${isAdmin ? 'ml-64' : (isDedicatedDriverMode ? 'ml-0 md:ml-64' : 'ml-0 md:ml-64')} p-4 md:p-8`}>
         <header className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 capitalize">
@@ -180,6 +197,14 @@ const App: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center space-x-4">
+             {loggedDriver && (
+               <button 
+                onClick={handleLogout}
+                className="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
+               >
+                 Logout
+               </button>
+             )}
             <div className="bg-white p-1 rounded-full shadow-sm border border-gray-100">
                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${isAdmin ? 'bg-blue-600' : 'bg-green-600'} flex items-center justify-center text-white font-bold text-sm`}>
                  {isAdmin ? 'AD' : loggedDriver?.name.substring(0, 2).toUpperCase()}

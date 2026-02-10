@@ -1,14 +1,16 @@
 
 import React, { useState } from 'react';
-import { Driver, Bike } from '../types';
+import { Driver, Bike, Payment } from '../types';
 
 interface DriverManagementProps {
   drivers: Driver[];
   setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
   bikes: Bike[];
+  payments: Payment[];
+  weeklyTarget: number;
 }
 
-const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes }) => {
+const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, weeklyTarget }) => {
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [formData, setFormData] = useState<Omit<Driver, 'id'>>({
@@ -77,6 +79,14 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const getPaymentStatus = (driverId: string) => {
+    const currentWeek = 4; // Consistent with dashboard
+    const paid = payments
+      .filter(p => p.driverId === driverId && p.weekNumber === currentWeek)
+      .reduce((sum, p) => sum + p.amount, 0);
+    return paid >= weeklyTarget ? 'paid' : 'overdue';
+  };
+
   const DriverForm = ({ title, key }: { title: string, key?: string }) => (
     <form key={key} onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md border border-blue-100 col-span-full mb-6">
       <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
@@ -139,6 +149,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
         {drivers.map(driver => {
           const assignedBike = bikes.find(b => b.assignedDriverId === driver.id);
           const isEditing = editingDriverId === driver.id;
+          const status = getPaymentStatus(driver.id);
 
           if (isEditing) {
             return <DriverForm key={driver.id} title={`Edit ${driver.name}`} />;
@@ -153,9 +164,15 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 Edit
               </button>
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-800 text-lg">{driver.name}</h3>
-                  <p className="text-sm text-gray-500">{driver.driverCode}</p>
+                <div className="flex items-center space-x-2">
+                  <div 
+                    className={`w-3 h-3 rounded-full shrink-0 ${status === 'paid' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}
+                    title={status === 'paid' ? 'Paid on time' : 'Payment overdue'}
+                  ></div>
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-lg leading-tight">{driver.name}</h3>
+                    <p className="text-sm text-gray-500">{driver.driverCode}</p>
+                  </div>
                 </div>
                 <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold uppercase">
                   {driver.nationality}
