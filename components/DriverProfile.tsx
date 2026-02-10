@@ -39,8 +39,8 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const currentMonth = months[new Date().getMonth()];
 
-  // Using a relevant high-quality motorcycle fleet image
-  const headerBgImage = "https://images.unsplash.com/photo-1626244101211-396706248384?q=80&w=2070&auto=format&fit=crop";
+  // Using a stable high-quality motorcycle image from Unsplash
+  const headerBgImage = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=2070&auto=format&fit=crop";
 
   return (
     <div className="w-full space-y-6 pb-20 md:pb-8">
@@ -48,7 +48,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
       <div 
         className="relative overflow-hidden rounded-3xl shadow-xl shadow-green-100"
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(21, 128, 61, 0.96), rgba(34, 197, 94, 0.85)), url(${headerBgImage})`,
+          backgroundImage: `linear-gradient(to right, rgba(21, 128, 61, 0.96), rgba(34, 197, 94, 0.85)), url('${headerBgImage}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
