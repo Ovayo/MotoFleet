@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS } from './data';
 import { Bike, Driver, Payment, MaintenanceRecord, View } from './types';
 import Sidebar from './components/Sidebar';
@@ -48,9 +48,16 @@ const App: React.FC = () => {
           />
         );
       case 'fleet':
-        return <FleetManagement bikes={bikes} setBikes={setBikes} />;
+        return (
+          <FleetManagement 
+            bikes={bikes} 
+            setBikes={setBikes} 
+            drivers={drivers} 
+            maintenance={maintenance} 
+          />
+        );
       case 'drivers':
-        return <DriverManagement drivers={drivers} bikes={bikes} />;
+        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} />;
       case 'payments':
         return (
           <PaymentTracking 
@@ -74,17 +81,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 text-gray-900">
       <Sidebar activeView={view} setView={setView} />
       <main className="flex-1 ml-64 p-8">
         <header className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 capitalize">{view}</h1>
-            <p className="text-gray-500">Welcome back! Here's what's happening today.</p>
+            <h1 className="text-2xl font-bold text-gray-800 capitalize">{view.replace('-', ' ')}</h1>
+            <p className="text-gray-500">Fleet management system active and monitoring.</p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="bg-white p-2 rounded-full shadow-sm border border-gray-100">
-               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">A</div>
+               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">JD</div>
             </div>
           </div>
         </header>
