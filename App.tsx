@@ -11,15 +11,55 @@ import MaintenanceLog from './components/MaintenanceLog';
 import DriverProfile from './components/DriverProfile';
 import DriverLogin from './components/DriverLogin';
 
+const STORAGE_KEYS = {
+  BIKES: 'motofleet_bikes_v1',
+  DRIVERS: 'motofleet_drivers_v1',
+  PAYMENTS: 'motofleet_payments_v1',
+  MAINTENANCE: 'motofleet_maintenance_v1',
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [isAdmin, setIsAdmin] = useState<boolean>(true);
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   
-  const [bikes, setBikes] = useState<Bike[]>(INITIAL_BIKES);
-  const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
-  const [payments, setPayments] = useState<Payment[]>(INITIAL_PAYMENTS);
-  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
+  // Initialize state from LocalStorage or use defaults
+  const [bikes, setBikes] = useState<Bike[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.BIKES);
+    return saved ? JSON.parse(saved) : INITIAL_BIKES;
+  });
+
+  const [drivers, setDrivers] = useState<Driver[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.DRIVERS);
+    return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
+  });
+
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.PAYMENTS);
+    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+  });
+
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.MAINTENANCE);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Sync state to LocalStorage on changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
+  }, [bikes]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers));
+  }, [drivers]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
+  }, [payments]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance));
+  }, [maintenance]);
 
   const WEEKLY_TARGET = 650;
 
@@ -28,7 +68,7 @@ const App: React.FC = () => {
       ...payment,
       id: `p-${Date.now()}`
     };
-    setPayments([...payments, newPayment]);
+    setPayments(prev => [...prev, newPayment]);
   };
 
   const handleAddMaintenance = (record: Omit<MaintenanceRecord, 'id'>) => {
@@ -36,7 +76,7 @@ const App: React.FC = () => {
       ...record,
       id: `m-${Date.now()}`
     };
-    setMaintenance([...maintenance, newRecord]);
+    setMaintenance(prev => [...prev, newRecord]);
   };
 
   const handleDriverLogin = (contact: string) => {
