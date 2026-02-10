@@ -34,14 +34,14 @@ const StatCard = ({ title, value, icon, color }: { title: string, value: string,
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, maintenance, weeklyTarget }) => {
-  const [copied, setCopied] = useState(false);
+  const [driverLinkCopied, setDriverLinkCopied] = useState(false);
+  const [mechanicLinkCopied, setMechanicLinkCopied] = useState(false);
 
   const totalRevenue = payments.reduce((acc, p) => acc + p.amount, 0);
   const totalExpenses = maintenance.reduce((acc, m) => acc + m.cost, 0);
   const netProfit = totalRevenue - totalExpenses;
   
-  // Calculate overdue drivers
-  const currentWeek = 4; // Assuming current week 4 for demo
+  const currentWeek = 4;
   const overdueDrivers = useMemo(() => {
     return drivers.filter(driver => {
       const driverPayments = payments.filter(p => p.driverId === driver.id && p.weekNumber === currentWeek);
@@ -62,12 +62,18 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
     { name: 'Idle', value: bikes.filter(b => b.status === 'idle').length, color: '#F59E0B' },
   ];
 
-  const handleCopyLink = () => {
-    const url = new URL(window.location.origin);
-    url.searchParams.set('portal', 'driver');
+  const handleCopyLink = (portal: 'driver' | 'mechanic') => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('portal', portal);
     navigator.clipboard.writeText(url.toString());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    
+    if (portal === 'driver') {
+      setDriverLinkCopied(true);
+      setTimeout(() => setDriverLinkCopied(false), 2000);
+    } else {
+      setMechanicLinkCopied(true);
+      setTimeout(() => setMechanicLinkCopied(false), 2000);
+    }
   };
 
   const sendReminder = (driver: Driver) => {
@@ -169,22 +175,45 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-600 to-green-700 p-6 rounded-xl shadow-lg text-white">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-white/20 p-2 rounded-lg text-xl">📲</div>
-              <h3 className="font-bold">Driver Portal</h3>
+          {/* Dedicated Portal Links Section */}
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Shareable Portals</h4>
+            
+            <div className="bg-gradient-to-br from-green-600 to-green-700 p-6 rounded-2xl shadow-lg text-white">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="bg-white/20 p-2 rounded-lg text-xl">📲</div>
+                <h3 className="font-bold">Driver Portal</h3>
+              </div>
+              <p className="text-[10px] text-green-50 mb-4 leading-relaxed opacity-80">
+                Independent access for drivers to track their earnings and bike health.
+              </p>
+              <button 
+                onClick={() => handleCopyLink('driver')}
+                className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2 ${
+                  driverLinkCopied ? 'bg-white text-green-600 shadow-inner' : 'bg-green-500 hover:bg-green-400 text-white shadow-md'
+                }`}
+              >
+                <span>{driverLinkCopied ? '✅ Copied' : '🔗 Copy Driver Link'}</span>
+              </button>
             </div>
-            <p className="text-xs text-green-50 mb-6 leading-relaxed">
-              Send this unique link to your drivers. They will only be able to see their own payments and bike status.
-            </p>
-            <button 
-              onClick={handleCopyLink}
-              className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center space-x-2 ${
-                copied ? 'bg-white text-green-600' : 'bg-green-500 hover:bg-green-400 text-white'
-              }`}
-            >
-              <span>{copied ? '✅ Link Copied!' : '🔗 Copy Driver Link'}</span>
-            </button>
+
+            <div className="bg-gradient-to-br from-amber-600 to-amber-700 p-6 rounded-2xl shadow-lg text-white">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="bg-white/20 p-2 rounded-lg text-xl">🛠️</div>
+                <h3 className="font-bold">Mechanic Portal</h3>
+              </div>
+              <p className="text-[10px] text-amber-50 mb-4 leading-relaxed opacity-80">
+                Unique workshop link to manage service cycles and technical logs.
+              </p>
+              <button 
+                onClick={() => handleCopyLink('mechanic')}
+                className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2 ${
+                  mechanicLinkCopied ? 'bg-white text-amber-600 shadow-inner' : 'bg-amber-500 hover:bg-amber-400 text-white shadow-md'
+                }`}
+              >
+                <span>{mechanicLinkCopied ? '✅ Copied' : '🔗 Copy Workshop Link'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

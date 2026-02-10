@@ -41,6 +41,8 @@ export interface MaintenanceRecord {
   description: string;
   cost: number;
   serviceType: 'repair' | 'routine' | 'tyres' | 'oil' | 'fuel' | 'parts' | 'other';
+  warrantyMonths?: number;
+  performedBy?: string;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal';

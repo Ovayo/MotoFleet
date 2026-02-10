@@ -39,31 +39,43 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const currentMonth = months[new Date().getMonth()];
 
+  // Using a relevant high-quality motorcycle fleet image
+  const headerBgImage = "https://images.unsplash.com/photo-1626244101211-396706248384?q=80&w=2070&auto=format&fit=crop";
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-8">
-      {/* Motivation Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-green-100">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
-            <div className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-              {stats.balance >= 0 ? '🏆 Elite Standing' : '📈 On the Way Up'}
+    <div className="w-full space-y-6 pb-20 md:pb-8">
+      {/* Motivation Header with Image Background and Green Tint */}
+      <div 
+        className="relative overflow-hidden rounded-3xl shadow-xl shadow-green-100"
+        style={{
+          backgroundImage: `linear-gradient(to right, rgba(21, 128, 61, 0.96), rgba(34, 197, 94, 0.85)), url(${headerBgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="relative z-10 p-6 md:p-8 text-white">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                {stats.balance >= 0 ? '🏆 Elite Standing' : '📈 On the Way Up'}
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black">Keep it up, {driver.name.split(' ')[0]}! 😊</h2>
+              <p className="text-green-50 opacity-95 text-sm md:text-base font-medium">
+                {stats.balance >= 0 
+                  ? "Your account is in great standing. Keep paying to own your future." 
+                  : `You are only R${Math.abs(stats.balance)} away from clearing your arrears!`}
+              </p>
             </div>
-            <h2 className="text-3xl md:text-4xl font-black">Keep it up, {driver.name.split(' ')[0]}! 😊</h2>
-            <p className="text-green-50 opacity-90 text-sm md:text-base">
-              {stats.balance >= 0 
-                ? "Your account is in great standing. Keep paying to own your future." 
-                : `You are only R${Math.abs(stats.balance)} away from clearing your arrears!`}
-            </p>
-          </div>
-          <div className="flex gap-4">
-             <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-center min-w-[100px] border border-white/10">
-                <p className="text-[10px] font-bold uppercase opacity-70">Weekly Streak</p>
-                <p className="text-2xl font-black">{stats.streak} 🔥</p>
-             </div>
-             <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-center min-w-[100px] border border-white/10">
-                <p className="text-[10px] font-bold uppercase opacity-70">Payment Rank</p>
-                <p className="text-2xl font-black">Top 10%</p>
-             </div>
+            <div className="flex gap-4">
+               <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-center min-w-[100px] border border-white/10">
+                  <p className="text-[10px] font-bold uppercase opacity-70">Weekly Streak</p>
+                  <p className="text-2xl font-black">{stats.streak} 🔥</p>
+               </div>
+               <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-center min-w-[100px] border border-white/10">
+                  <p className="text-[10px] font-bold uppercase opacity-70">Payment Rank</p>
+                  <p className="text-2xl font-black">Top 10%</p>
+               </div>
+            </div>
           </div>
         </div>
       </div>

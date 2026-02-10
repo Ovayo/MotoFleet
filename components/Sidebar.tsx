@@ -5,12 +5,12 @@ import { View } from '../types';
 interface SidebarProps {
   activeView: View;
   setView: (view: View) => void;
-  isAdmin: boolean;
-  onSwitchMode: () => void;
+  role: 'admin' | 'driver' | 'mechanic';
+  onSwitchMode: (role: 'admin' | 'driver' | 'mechanic') => void;
   hideSwitcher?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitchMode, hideSwitcher = false }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMode, hideSwitcher = false }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const adminItems = [
@@ -21,15 +21,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitc
     { id: 'maintenance', label: 'Maintenance', icon: '🔧' },
   ];
 
+  const mechanicItems = [
+    { id: 'mechanic-portal', label: 'Workshop Overview', icon: '🛠️' },
+    { id: 'maintenance', label: 'Service Logs', icon: '📋' },
+  ];
+
   const driverItems = [
     { id: 'driver-profile', label: 'My Portfolio', icon: '👤' },
   ];
 
-  const menuItems = isAdmin ? adminItems : driverItems;
+  const menuItems = role === 'admin' ? adminItems : role === 'mechanic' ? mechanicItems : driverItems;
+  const themeColor = role === 'admin' ? 'blue' : role === 'mechanic' ? 'amber' : 'green';
 
   return (
     <>
-      {/* Mobile Menu Toggle */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-lg shadow-md border border-gray-200"
@@ -38,15 +43,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitc
       </button>
 
       <aside className={`w-64 bg-white border-r border-gray-200 fixed h-full z-40 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6">
+        <div className="p-6 h-full flex flex-col">
           <div className="flex items-center space-x-2 mb-8">
-            <div className={`${isAdmin ? 'bg-blue-600' : 'bg-green-600'} p-2 rounded-lg`}>
+            <div className={`bg-${themeColor}-600 p-2 rounded-lg`}>
                <span className="text-white text-xl font-bold">MF</span>
             </div>
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">MotoFleet</h2>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-1 flex-1">
             {menuItems.map((item) => (
               <button
                 key={item.id}
@@ -56,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitc
                 }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   activeView === item.id
-                    ? (isAdmin ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600') + ' font-semibold'
+                    ? `bg-${themeColor}-50 text-${themeColor}-600 font-semibold`
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -67,38 +72,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isAdmin, onSwitc
           </nav>
 
           {!hideSwitcher && (
-            <div className="mt-8 pt-8 border-t border-gray-100">
-              <button
-                onClick={onSwitchMode}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors group"
-              >
-                <div className="text-left">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Mode</p>
-                  <p className="text-sm font-bold text-gray-700">{isAdmin ? 'Admin Portal' : 'Driver View'}</p>
-                </div>
-                <span className="text-gray-400 group-hover:text-blue-500 transition-colors">🔄</span>
-              </button>
+            <div className="mt-auto pt-8 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Switch Portal</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => onSwitchMode('admin')} className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${role === 'admin' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Admin</button>
+                <button onClick={() => onSwitchMode('mechanic')} className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${role === 'mechanic' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Mechanic</button>
+                <button onClick={() => onSwitchMode('driver')} className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${role === 'driver' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Driver</button>
+              </div>
             </div>
           )}
         </div>
-        
-        <div className="absolute bottom-0 w-full p-6 border-t border-gray-100">
-          <div className={`${isAdmin ? 'bg-blue-600' : 'bg-green-600'} rounded-xl p-4 text-white text-sm shadow-lg`}>
-            <p className="font-semibold mb-1">{isAdmin ? 'Fleet Health' : 'Your Standing'}</p>
-            <p className="text-white/80 text-xs">{isAdmin ? '7/8 Bikes Active' : 'Elite Status Active'}</p>
-            <div className="w-full bg-black/10 rounded-full h-1.5 mt-2 overflow-hidden">
-              <div className="bg-white h-1.5 rounded-full" style={{ width: isAdmin ? '87%' : '95%' }}></div>
-            </div>
-          </div>
-        </div>
       </aside>
       
-      {/* Overlay for mobile */}
       {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30"
-          onClick={() => setIsOpen(false)}
-        ></div>
+        <div className="md:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30" onClick={() => setIsOpen(false)}></div>
       )}
     </>
   );

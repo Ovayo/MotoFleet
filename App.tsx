@@ -10,6 +10,7 @@ import PaymentTracking from './components/PaymentTracking';
 import MaintenanceLog from './components/MaintenanceLog';
 import DriverProfile from './components/DriverProfile';
 import DriverLogin from './components/DriverLogin';
+import MechanicPortal from './components/MechanicPortal';
 
 const STORAGE_KEYS = {
   BIKES: 'motofleet_bikes_v1',
@@ -19,17 +20,22 @@ const STORAGE_KEYS = {
 };
 
 const App: React.FC = () => {
-  // Check URL for dedicated driver portal mode
-  const isDedicatedDriverMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('portal') === 'driver';
-  }, []);
+  const params = new URLSearchParams(window.location.search);
+  const isDedicatedDriverMode = params.get('portal') === 'driver';
+  const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
-  const [view, setView] = useState<View>(isDedicatedDriverMode ? 'driver-profile' : 'dashboard');
-  const [isAdmin, setIsAdmin] = useState<boolean>(!isDedicatedDriverMode);
+  const [view, setView] = useState<View>(
+    isDedicatedDriverMode ? 'driver-profile' : 
+    isDedicatedMechanicMode ? 'mechanic-portal' : 'dashboard'
+  );
+  
+  const [role, setRole] = useState<'admin' | 'driver' | 'mechanic'>(
+    isDedicatedDriverMode ? 'driver' : 
+    isDedicatedMechanicMode ? 'mechanic' : 'admin'
+  );
+
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   
-  // Initialize state from LocalStorage or use defaults
   const [bikes, setBikes] = useState<Bike[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BIKES);
     return saved ? JSON.parse(saved) : INITIAL_BIKES;
@@ -50,39 +56,19 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Sync state to LocalStorage on changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
-  }, [bikes]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers));
-  }, [drivers]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance));
-  }, [maintenance]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes)); }, [bikes]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers)); }, [drivers]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments)); }, [payments]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance)); }, [maintenance]);
 
   const WEEKLY_TARGET = 650;
 
   const handleAddPayment = (payment: Omit<Payment, 'id'>) => {
-    const newPayment: Payment = {
-      ...payment,
-      id: `p-${Date.now()}`
-    };
-    setPayments(prev => [...prev, newPayment]);
+    setPayments(prev => [...prev, { ...payment, id: `p-${Date.now()}` }]);
   };
 
   const handleAddMaintenance = (record: Omit<MaintenanceRecord, 'id'>) => {
-    const newRecord: MaintenanceRecord = {
-      ...record,
-      id: `m-${Date.now()}`
-    };
-    setMaintenance(prev => [...prev, newRecord]);
+    setMaintenance(prev => [...prev, { ...record, id: `m-${Date.now()}` }]);
   };
 
   const handleDriverLogin = (contact: string) => {
@@ -90,7 +76,7 @@ const App: React.FC = () => {
     const driver = drivers.find(d => d.contact.replace(/\s/g, '') === normalizedInput);
     if (driver) {
       setLoggedDriver(driver);
-      setIsAdmin(false);
+      setRole('driver');
       setView('driver-profile');
       return true;
     }
@@ -99,17 +85,18 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setLoggedDriver(null);
-    // If we came from the dedicated portal, we stay in driver mode
     if (isDedicatedDriverMode) {
-      setIsAdmin(false);
+      setRole('driver');
+    } else if (isDedicatedMechanicMode) {
+      setRole('mechanic');
     } else {
-      setIsAdmin(true);
+      setRole('admin');
       setView('dashboard');
     }
   };
 
   const renderView = () => {
-    if (!isAdmin && loggedDriver) {
+    if (role === 'driver' && loggedDriver) {
       return (
         <DriverProfile 
           driver={loggedDriver} 
@@ -121,57 +108,37 @@ const App: React.FC = () => {
       );
     }
 
+    if (role === 'mechanic') {
+      return (
+        <MechanicPortal 
+          bikes={bikes} 
+          setBikes={setBikes}
+          maintenance={maintenance} 
+          onAddMaintenance={handleAddMaintenance} 
+        />
+      );
+    }
+
     switch (view) {
       case 'dashboard':
-        return (
-          <Dashboard 
-            bikes={bikes} 
-            drivers={drivers} 
-            payments={payments} 
-            maintenance={maintenance}
-            weeklyTarget={WEEKLY_TARGET}
-          />
-        );
+        return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
       case 'fleet':
-        return (
-          <FleetManagement 
-            bikes={bikes} 
-            setBikes={setBikes} 
-            drivers={drivers} 
-            maintenance={maintenance} 
-          />
-        );
+        return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} />;
       case 'drivers':
         return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
-        return (
-          <PaymentTracking 
-            drivers={drivers} 
-            payments={payments} 
-            onAddPayment={handleAddPayment} 
-            weeklyTarget={WEEKLY_TARGET}
-          />
-        );
+        return <PaymentTracking drivers={drivers} payments={payments} onAddPayment={handleAddPayment} weeklyTarget={WEEKLY_TARGET} />;
       case 'maintenance':
-        return (
-          <MaintenanceLog 
-            bikes={bikes} 
-            maintenance={maintenance} 
-            onAddMaintenance={handleAddMaintenance} 
-          />
-        );
+        return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
+      case 'mechanic-portal':
+        return <MechanicPortal bikes={bikes} setBikes={setBikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
   };
 
-  if (!isAdmin && !loggedDriver) {
-    return (
-      <DriverLogin 
-        onLogin={handleDriverLogin} 
-        onBackToAdmin={isDedicatedDriverMode ? undefined : () => setIsAdmin(true)} 
-      />
-    );
+  if (role === 'driver' && !loggedDriver) {
+    return <DriverLogin onLogin={handleDriverLogin} onBackToAdmin={() => setRole('admin')} />;
   }
 
   return (
@@ -179,36 +146,31 @@ const App: React.FC = () => {
       <Sidebar 
         activeView={view} 
         setView={setView} 
-        isAdmin={isAdmin} 
-        hideSwitcher={isDedicatedDriverMode}
-        onSwitchMode={() => {
-          if (isAdmin) setIsAdmin(false);
-          else handleLogout();
+        role={role} 
+        hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
+        onSwitchMode={(newRole) => {
+          setRole(newRole);
+          if (newRole === 'admin') setView('dashboard');
+          if (newRole === 'mechanic') setView('mechanic-portal');
+          if (newRole === 'driver') setLoggedDriver(null); // Triggers login
         }}
       />
-      <main className={`flex-1 ${isAdmin ? 'ml-64' : (isDedicatedDriverMode ? 'ml-0 md:ml-64' : 'ml-0 md:ml-64')} p-4 md:p-8`}>
+      <main className={`flex-1 ${(isDedicatedDriverMode || isDedicatedMechanicMode) ? 'ml-0 md:ml-64' : 'ml-64'} p-4 md:p-8`}>
         <header className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 capitalize">
-              {isAdmin ? view.replace('-', ' ') : `Welcome, ${loggedDriver?.name.split(' ')[0]} 😊`}
+              {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Mechanic Workshop' : `Welcome, ${loggedDriver?.name.split(' ')[0]}`}
             </h1>
-            <p className="text-gray-500 text-sm md:text-base">
-              {isAdmin ? "Fleet management system active." : "Your personal rental portfolio and status."}
+            <p className="text-gray-500 text-sm">
+              {role === 'admin' ? "System Administrator" : role === 'mechanic' ? "Auto Mechanics Dashboard" : "Driver Portfolio"}
             </p>
           </div>
           <div className="flex items-center space-x-4">
-             {loggedDriver && (
-               <button 
-                onClick={handleLogout}
-                className="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
-               >
-                 Logout
-               </button>
+             {role !== 'admin' && (
+               <button onClick={handleLogout} className="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest">Logout</button>
              )}
-            <div className="bg-white p-1 rounded-full shadow-sm border border-gray-100">
-               <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${isAdmin ? 'bg-blue-600' : 'bg-green-600'} flex items-center justify-center text-white font-bold text-sm`}>
-                 {isAdmin ? 'AD' : loggedDriver?.name.substring(0, 2).toUpperCase()}
-               </div>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${role === 'admin' ? 'bg-blue-600' : role === 'mechanic' ? 'bg-amber-600' : 'bg-green-600'}`}>
+              {role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()}
             </div>
           </div>
         </header>
