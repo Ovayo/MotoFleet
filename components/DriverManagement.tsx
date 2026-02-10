@@ -18,7 +18,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     address: '',
     idNumber: '',
     driverCode: '',
-    city: ''
+    city: '',
+    notes: ''
   });
 
   const handleEditClick = (driver: Driver) => {
@@ -30,7 +31,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
       address: driver.address,
       idNumber: driver.idNumber,
       driverCode: driver.driverCode,
-      city: driver.city
+      city: driver.city,
+      notes: driver.notes || ''
     });
     setIsAddingDriver(false);
   };
@@ -44,7 +46,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
       address: '',
       idNumber: '',
       driverCode: '',
-      city: ''
+      city: '',
+      notes: ''
     });
     setIsAddingDriver(true);
   };
@@ -69,14 +72,13 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fix: Add optional key prop to the props definition to resolve list rendering TS error
-  const DriverForm = ({ title }: { title: string, key?: string }) => (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md border border-blue-100 col-span-full mb-6">
+  const DriverForm = ({ title, key }: { title: string, key?: string }) => (
+    <form key={key} onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-md border border-blue-100 col-span-full mb-6">
       <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
@@ -103,9 +105,13 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City</label>
           <input name="city" value={formData.city} onChange={handleInputChange} required className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
-        <div className="md:col-span-2 lg:col-span-3">
+        <div className="md:col-span-2">
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Address</label>
           <input name="address" value={formData.address} onChange={handleInputChange} required className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <div className="md:col-span-1">
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Notes / Remarks</label>
+          <input name="notes" value={formData.notes || ''} onChange={handleInputChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Late payments, behavior etc." />
         </div>
       </div>
       <div className="flex justify-end space-x-3 mt-6">
@@ -139,7 +145,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
           }
 
           return (
-            <div key={driver.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 group relative">
+            <div key={driver.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 group relative flex flex-col">
               <button 
                 onClick={() => handleEditClick(driver)}
                 className="absolute top-4 right-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity hover:underline text-sm font-medium"
@@ -156,7 +162,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 </span>
               </div>
               
-              <div className="space-y-3 mb-6">
+              <div className="space-y-3 mb-6 flex-grow">
                 <div className="flex items-center text-sm text-gray-600">
                   <span className="w-6 text-lg">📞</span>
                   <span>{driver.contact}</span>
@@ -169,6 +175,12 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   <span className="w-6 text-lg">🪪</span>
                   <span>ID: {driver.idNumber}</span>
                 </div>
+                {driver.notes && (
+                  <div className="mt-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Internal Notes</p>
+                    <p className="text-xs text-blue-700 italic">"{driver.notes}"</p>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 border-t border-gray-50">

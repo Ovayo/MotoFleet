@@ -10,6 +10,7 @@ export interface Bike {
   city: string;
   status: 'active' | 'maintenance' | 'idle';
   assignedDriverId?: string;
+  notes?: string;
 }
 
 export interface Driver {
@@ -21,6 +22,7 @@ export interface Driver {
   idNumber: string;
   driverCode: string;
   city: string;
+  notes?: string;
 }
 
 export interface Payment {

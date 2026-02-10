@@ -12,6 +12,7 @@ interface FleetManagementProps {
 const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, drivers, maintenance }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [historyBikeId, setHistoryBikeId] = useState<string | null>(null);
+  const [selectedBikeIds, setSelectedBikeIds] = useState<Set<string>>(new Set());
   const [newBike, setNewBike] = useState<Omit<Bike, 'id' | 'status'>>({
     makeModel: '',
     licenseNumber: '',
@@ -19,7 +20,8 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     year: '',
     dealer: '',
     price: '',
-    city: ''
+    city: '',
+    notes: ''
   });
 
   const toggleStatus = (id: string) => {
@@ -50,7 +52,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     };
     setBikes(prev => [...prev, bike]);
     setShowAddForm(false);
-    setNewBike({ makeModel: '', licenseNumber: '', vin: '', year: '', dealer: '', price: '', city: '' });
+    setNewBike({ makeModel: '', licenseNumber: '', vin: '', year: '', dealer: '', price: '', city: '', notes: '' });
   };
 
   const getLastMaintenance = (bikeId: string) => {
@@ -58,6 +60,32 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     if (records.length === 0) return 'Never';
     const latest = records.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
     return new Date(latest.date).toLocaleDateString();
+  };
+
+  // Bulk Action Helpers
+  const handleSelectBike = (id: string) => {
+    const newSelection = new Set(selectedBikeIds);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedBikeIds(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedBikeIds.size === bikes.length) {
+      setSelectedBikeIds(new Set());
+    } else {
+      setSelectedBikeIds(new Set(bikes.map(b => b.id)));
+    }
+  };
+
+  const handleBulkStatusChange = (status: Bike['status']) => {
+    setBikes(prev => prev.map(bike => 
+      selectedBikeIds.has(bike.id) ? { ...bike, status } : bike
+    ));
+    setSelectedBikeIds(new Set());
   };
 
   return (
@@ -103,17 +131,65 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City</label>
               <input required className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" value={newBike.city} onChange={e => setNewBike({...newBike, city: e.target.value})} placeholder="JHB" />
             </div>
-            <div className="flex items-end">
-              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">Add Bike to Fleet</button>
+            <div className="md:col-span-1">
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Internal Notes</label>
+              <input className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" value={newBike.notes || ''} onChange={e => setNewBike({...newBike, notes: e.target.value})} placeholder="Special instructions..." />
+            </div>
+            <div className="lg:col-span-4 flex justify-end mt-2">
+              <button type="submit" className="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">Add Bike to Fleet</button>
             </div>
           </div>
         </form>
+      )}
+
+      {/* Bulk Actions Toolbar */}
+      {selectedBikeIds.size > 0 && (
+        <div className="bg-blue-600 text-white p-4 rounded-xl shadow-lg flex items-center justify-between animate-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center space-x-4">
+            <span className="font-bold">{selectedBikeIds.size} Bikes Selected</span>
+            <div className="h-6 w-px bg-blue-400"></div>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => handleBulkStatusChange('active')}
+                className="px-3 py-1 bg-white text-blue-600 rounded-md text-sm font-bold hover:bg-blue-50 transition-colors"
+              >
+                Mark Active
+              </button>
+              <button 
+                onClick={() => handleBulkStatusChange('maintenance')}
+                className="px-3 py-1 bg-blue-800 text-white rounded-md text-sm font-bold hover:bg-blue-900 transition-colors"
+              >
+                Mark Maintenance
+              </button>
+              <button 
+                onClick={() => handleBulkStatusChange('idle')}
+                className="px-3 py-1 bg-blue-800 text-white rounded-md text-sm font-bold hover:bg-blue-900 transition-colors"
+              >
+                Mark Idle
+              </button>
+            </div>
+          </div>
+          <button 
+            onClick={() => setSelectedBikeIds(new Set())}
+            className="text-sm font-medium hover:underline"
+          >
+            Deselect All
+          </button>
+        </div>
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
+              <th className="px-6 py-4 w-10">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  checked={selectedBikeIds.size === bikes.length && bikes.length > 0}
+                  onChange={handleSelectAll}
+                />
+              </th>
               <th className="px-6 py-4 text-sm font-semibold text-gray-600">Bike Details</th>
               <th className="px-6 py-4 text-sm font-semibold text-gray-600">Registration</th>
               <th className="px-6 py-4 text-sm font-semibold text-gray-600">Driver</th>
@@ -124,10 +200,26 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
           </thead>
           <tbody className="divide-y divide-gray-100">
             {bikes.map((bike) => (
-              <tr key={bike.id} className="hover:bg-gray-50 transition-colors">
+              <tr 
+                key={bike.id} 
+                className={`transition-colors ${selectedBikeIds.has(bike.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}
+              >
+                <td className="px-6 py-4">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    checked={selectedBikeIds.has(bike.id)}
+                    onChange={() => handleSelectBike(bike.id)}
+                  />
+                </td>
                 <td className="px-6 py-4">
                   <div className="font-medium text-gray-800">{bike.makeModel}</div>
                   <div className="text-xs text-gray-500">Year: {bike.year} | {bike.city}</div>
+                  {bike.notes && (
+                    <div className="mt-1 text-[10px] text-blue-500 font-medium italic truncate max-w-[150px]" title={bike.notes}>
+                      Note: {bike.notes}
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm font-mono text-gray-600">{bike.licenseNumber}</div>
