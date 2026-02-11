@@ -57,7 +57,6 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Explicit persistence watchers
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
   }, [bikes]);
@@ -157,7 +156,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
       <Sidebar 
         activeView={view} 
         setView={setView} 
@@ -170,29 +169,48 @@ const App: React.FC = () => {
           if (newRole === 'driver') setLoggedDriver(null);
         }}
       />
-      <main className={`flex-1 transition-all duration-300 ${(isDedicatedDriverMode || isDedicatedMechanicMode) ? 'ml-0 md:ml-64' : 'ml-64'} p-4 md:p-8`}>
-        <header className="mb-8 flex justify-between items-center bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-gray-100 sticky top-4 z-20">
-          <div>
+      
+      {/* Responsive Main Container */}
+      <main className={`flex-1 transition-all duration-300 w-full md:ml-64 p-4 md:p-8 pt-20 md:pt-8`}>
+        {/* Sticky Mobile-Responsive Header */}
+        <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-black text-gray-800 tracking-tight capitalize">
-                {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop Monitoring' : `Driver Profile`}
+              <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
+                {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `My Portfolio`}
               </h1>
-              {role === 'admin' && <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-widest">eNaTIS & GPS Linked</span>}
+              {role === 'admin' && (
+                <span className="hidden sm:inline-block text-[8px] md:text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                  Live Terminal
+                </span>
+              )}
             </div>
-            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-              {role === 'admin' ? "System Master Terminal" : role === 'mechanic' ? "Mechanical Maintenance Portal" : `${loggedDriver?.name}`}
+            <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
+              {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : `${loggedDriver?.name}`}
             </p>
           </div>
-          <div className="flex items-center space-x-4">
+          
+          <div className="flex items-center space-x-2 md:space-x-4">
              {role !== 'admin' && (
-               <button onClick={handleLogout} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">Logout Session</button>
+               <button 
+                onClick={handleLogout} 
+                className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
+               >
+                 Sign Out
+               </button>
              )}
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black shadow-lg ${role === 'admin' ? 'bg-blue-600 shadow-blue-100' : role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 'bg-green-600 shadow-green-100'}`}>
+            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base ${
+              role === 'admin' ? 'bg-blue-600 shadow-blue-100' : 
+              role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
+              'bg-green-600 shadow-green-100'
+            }`}>
               {role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()}
             </div>
           </div>
         </header>
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+
+        {/* View Content Area */}
+        <div className="animate-in fade-in slide-in-from-bottom-3 duration-500">
           {renderView()}
         </div>
       </main>

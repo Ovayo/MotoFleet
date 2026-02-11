@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Driver, Bike, Payment } from '../types';
 
@@ -272,7 +271,10 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${payStatus === 'paid' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
                 </div>
                 <div>
-                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight">{driver.name}</h3>
+                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center">
+                    {driver.name}
+                    <span className={`w-2.5 h-2.5 rounded-full ml-3 ${payStatus === 'paid' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} title={payStatus === 'paid' ? 'Account in Good Standing' : 'Account Overdue'}></span>
+                  </h3>
                   <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
                     <span className="text-blue-500 mr-2">📍 {driver.city}</span>
                     <span className="bg-gray-100 px-2 py-0.5 rounded-full">{driver.nationality}</span>
