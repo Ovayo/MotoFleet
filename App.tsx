@@ -8,15 +8,16 @@ import FleetManagement from './components/FleetManagement';
 import DriverManagement from './components/DriverManagement';
 import PaymentTracking from './components/PaymentTracking';
 import MaintenanceLog from './components/MaintenanceLog';
+import TrackingPortal from './components/TrackingPortal';
 import DriverProfile from './components/DriverProfile';
 import DriverLogin from './components/DriverLogin';
 import MechanicPortal from './components/MechanicPortal';
 
 const STORAGE_KEYS = {
-  BIKES: 'motofleet_bikes_v1',
-  DRIVERS: 'motofleet_drivers_v1',
-  PAYMENTS: 'motofleet_payments_v1',
-  MAINTENANCE: 'motofleet_maintenance_v1',
+  BIKES: 'motofleet_bikes_v3',
+  DRIVERS: 'motofleet_drivers_v3',
+  PAYMENTS: 'motofleet_payments_v3',
+  MAINTENANCE: 'motofleet_maintenance_v3',
 };
 
 const App: React.FC = () => {
@@ -56,10 +57,22 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes)); }, [bikes]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers)); }, [drivers]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments)); }, [payments]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance)); }, [maintenance]);
+  // Explicit persistence watchers
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
+  }, [bikes]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers));
+  }, [drivers]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
+  }, [payments]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance));
+  }, [maintenance]);
 
   const WEEKLY_TARGET = 650;
 
@@ -124,6 +137,8 @@ const App: React.FC = () => {
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
+      case 'tracking':
+        return <TrackingPortal bikes={bikes} />;
       case 'drivers':
         return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
@@ -142,7 +157,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900">
+    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
       <Sidebar 
         activeView={view} 
         setView={setView} 
@@ -152,29 +167,34 @@ const App: React.FC = () => {
           setRole(newRole);
           if (newRole === 'admin') setView('dashboard');
           if (newRole === 'mechanic') setView('mechanic-portal');
-          if (newRole === 'driver') setLoggedDriver(null); // Triggers login
+          if (newRole === 'driver') setLoggedDriver(null);
         }}
       />
-      <main className={`flex-1 ${(isDedicatedDriverMode || isDedicatedMechanicMode) ? 'ml-0 md:ml-64' : 'ml-64'} p-4 md:p-8`}>
-        <header className="mb-8 flex justify-between items-center">
+      <main className={`flex-1 transition-all duration-300 ${(isDedicatedDriverMode || isDedicatedMechanicMode) ? 'ml-0 md:ml-64' : 'ml-64'} p-4 md:p-8`}>
+        <header className="mb-8 flex justify-between items-center bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-gray-100 sticky top-4 z-20">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 capitalize">
-              {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Mechanic Workshop' : `Welcome, ${loggedDriver?.name.split(' ')[0]}`}
-            </h1>
-            <p className="text-gray-500 text-sm">
-              {role === 'admin' ? "System Administrator" : role === 'mechanic' ? "Auto Mechanics Dashboard" : "Driver Portfolio"}
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl font-black text-gray-800 tracking-tight capitalize">
+                {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop Monitoring' : `Driver Profile`}
+              </h1>
+              {role === 'admin' && <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-widest">eNaTIS & GPS Linked</span>}
+            </div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+              {role === 'admin' ? "System Master Terminal" : role === 'mechanic' ? "Mechanical Maintenance Portal" : `${loggedDriver?.name}`}
             </p>
           </div>
           <div className="flex items-center space-x-4">
              {role !== 'admin' && (
-               <button onClick={handleLogout} className="text-xs font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest">Logout</button>
+               <button onClick={handleLogout} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">Logout Session</button>
              )}
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${role === 'admin' ? 'bg-blue-600' : role === 'mechanic' ? 'bg-amber-600' : 'bg-green-600'}`}>
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black shadow-lg ${role === 'admin' ? 'bg-blue-600 shadow-blue-100' : role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 'bg-green-600 shadow-green-100'}`}>
               {role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()}
             </div>
           </div>
         </header>
-        {renderView()}
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {renderView()}
+        </div>
       </main>
     </div>
   );

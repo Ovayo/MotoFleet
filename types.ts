@@ -1,4 +1,15 @@
 
+export interface TrackerInfo {
+  imei: string;
+  signalStrength: 'excellent' | 'good' | 'poor' | 'offline';
+  battery: number;
+  status: 'moving' | 'parked' | 'idle' | 'ignited';
+  lastSeen: string;
+  lat: number;
+  lng: number;
+  speed?: number;
+}
+
 export interface Bike {
   id: string;
   makeModel: string;
@@ -11,6 +22,9 @@ export interface Bike {
   status: 'active' | 'maintenance' | 'idle';
   assignedDriverId?: string;
   notes?: string;
+  licenseDiskExpiry?: string;
+  enatisVerified?: boolean;
+  tracker?: TrackerInfo;
 }
 
 export interface Driver {
@@ -23,6 +37,9 @@ export interface Driver {
   driverCode: string;
   city: string;
   notes?: string;
+  licenseExpiry?: string;
+  pdpExpiry?: string;
+  enatisVerified?: boolean;
 }
 
 export interface Payment {
@@ -45,4 +62,4 @@ export interface MaintenanceRecord {
   performedBy?: string;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'tracking' | 'driver-profile' | 'mechanic-portal';

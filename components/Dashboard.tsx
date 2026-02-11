@@ -62,6 +62,8 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
     { name: 'Idle', value: bikes.filter(b => b.status === 'idle').length, color: '#F59E0B' },
   ];
 
+  const movingBikes = bikes.filter(b => b.tracker?.status === 'moving').length;
+
   const handleCopyLink = (portal: 'driver' | 'mechanic') => {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('portal', portal);
@@ -150,6 +152,30 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
         </div>
 
         <div className="space-y-6">
+          {/* Tracker Status Card */}
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 rounded-3xl shadow-lg text-white">
+             <div className="flex justify-between items-start mb-4">
+                <div className="bg-white/20 p-2 rounded-lg text-xl">📍</div>
+                <span className="bg-white/20 px-2 py-1 rounded-full text-[10px] font-bold uppercase animate-pulse">Live</span>
+             </div>
+             <h3 className="text-lg font-black mb-1">MotoTrack Activity</h3>
+             <p className="text-indigo-100 text-xs mb-6 opacity-80">Monitoring current fleet movement across SA.</p>
+             
+             <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center">
+                   <p className="text-3xl font-black">{movingBikes}</p>
+                   <p className="text-[10px] font-bold uppercase opacity-60">Moving Now</p>
+                </div>
+                <div className="text-center border-l border-white/10">
+                   <p className="text-3xl font-black">{bikes.length - movingBikes}</p>
+                   <p className="text-[10px] font-bold uppercase opacity-60">Parked</p>
+                </div>
+             </div>
+             <button className="w-full py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all">
+                View Tracking Portal
+             </button>
+          </div>
+
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 mb-6">Fleet Status Breakdown</h3>
             <div className="h-60">
@@ -175,43 +201,15 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
             </div>
           </div>
 
-          {/* Dedicated Portal Links Section */}
           <div className="space-y-4">
             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Shareable Portals</h4>
-            
             <div className="bg-gradient-to-br from-green-600 to-green-700 p-6 rounded-2xl shadow-lg text-white">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="bg-white/20 p-2 rounded-lg text-xl">📲</div>
                 <h3 className="font-bold">Driver Portal</h3>
               </div>
-              <p className="text-[10px] text-green-50 mb-4 leading-relaxed opacity-80">
-                Independent access for drivers to track their earnings and bike health.
-              </p>
-              <button 
-                onClick={() => handleCopyLink('driver')}
-                className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2 ${
-                  driverLinkCopied ? 'bg-white text-green-600 shadow-inner' : 'bg-green-500 hover:bg-green-400 text-white shadow-md'
-                }`}
-              >
-                <span>{driverLinkCopied ? '✅ Copied' : '🔗 Copy Driver Link'}</span>
-              </button>
-            </div>
-
-            <div className="bg-gradient-to-br from-amber-600 to-amber-700 p-6 rounded-2xl shadow-lg text-white">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-white/20 p-2 rounded-lg text-xl">🛠️</div>
-                <h3 className="font-bold">Mechanic Portal</h3>
-              </div>
-              <p className="text-[10px] text-amber-50 mb-4 leading-relaxed opacity-80">
-                Unique workshop link to manage service cycles and technical logs.
-              </p>
-              <button 
-                onClick={() => handleCopyLink('mechanic')}
-                className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2 ${
-                  mechanicLinkCopied ? 'bg-white text-amber-600 shadow-inner' : 'bg-amber-500 hover:bg-amber-400 text-white shadow-md'
-                }`}
-              >
-                <span>{mechanicLinkCopied ? '✅ Copied' : '🔗 Copy Workshop Link'}</span>
+              <button onClick={() => handleCopyLink('driver')} className="w-full py-2.5 rounded-xl font-bold text-xs bg-green-500 hover:bg-green-400 text-white shadow-md transition-all">
+                {driverLinkCopied ? '✅ Copied' : '🔗 Copy Driver Link'}
               </button>
             </div>
           </div>
