@@ -55,16 +55,25 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
       >
         <div className="relative z-10 p-6 md:p-8 text-white">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="space-y-2">
-              <div className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                {stats.balance >= 0 ? '🏆 Elite Standing' : '📈 On the Way Up'}
+            <div className="flex items-center space-x-6">
+               <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] bg-white/20 backdrop-blur-md border-4 border-white/30 overflow-hidden shrink-0 flex items-center justify-center font-black text-2xl">
+                 {driver.profilePictureUrl ? (
+                   <img src={driver.profilePictureUrl} alt={driver.name} className="w-full h-full object-cover" />
+                 ) : (
+                   driver.name.substring(0, 2).toUpperCase()
+                 )}
+               </div>
+               <div className="space-y-1">
+                <div className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                  {stats.balance >= 0 ? '🏆 Elite Standing' : '📈 On the Way Up'}
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black">Keep it up, {driver.name.split(' ')[0]}! 😊</h2>
+                <p className="text-green-50 opacity-95 text-sm md:text-base font-medium">
+                  {stats.balance >= 0 
+                    ? "Your account is in great standing. Keep paying to own your future." 
+                    : `You are only R${Math.abs(stats.balance)} away from clearing your arrears!`}
+                </p>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black">Keep it up, {driver.name.split(' ')[0]}! 😊</h2>
-              <p className="text-green-50 opacity-95 text-sm md:text-base font-medium">
-                {stats.balance >= 0 
-                  ? "Your account is in great standing. Keep paying to own your future." 
-                  : `You are only R${Math.abs(stats.balance)} away from clearing your arrears!`}
-              </p>
             </div>
             <div className="flex gap-4">
                <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl text-center min-w-[100px] border border-white/10">

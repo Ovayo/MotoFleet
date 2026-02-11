@@ -34,12 +34,13 @@ export interface Driver {
   nationality: string;
   address: string;
   idNumber: string;
-  driverCode: string;
   city: string;
   notes?: string;
   licenseExpiry?: string;
   pdpExpiry?: string;
   enatisVerified?: boolean;
+  contactVerified?: boolean;
+  profilePictureUrl?: string;
 }
 
 export interface Payment {
@@ -60,6 +61,7 @@ export interface MaintenanceRecord {
   serviceType: 'repair' | 'routine' | 'tyres' | 'oil' | 'fuel' | 'parts' | 'other';
   warrantyMonths?: number;
   performedBy?: string;
+  attachmentUrl?: string;
 }
 
 export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'tracking' | 'driver-profile' | 'mechanic-portal';

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Bike, MaintenanceRecord } from '../types';
 
 interface MechanicPortalProps {
@@ -13,6 +13,8 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
   const [selectedBikeId, setSelectedBikeId] = useState<string | null>(null);
   const [showLogForm, setShowLogForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'queue' | 'roadmap' | 'warranties'>('queue');
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
     bikeId: '',
@@ -21,8 +23,20 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
     cost: 0,
     serviceType: 'routine',
     warrantyMonths: 0,
-    performedBy: 'In-House Workshop'
+    performedBy: 'In-House Workshop',
+    attachmentUrl: ''
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewLog(prev => ({ ...prev, attachmentUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const getServiceStatus = (bikeId: string) => {
     const records = maintenance.filter(m => m.bikeId === bikeId && (m.serviceType === 'routine' || m.serviceType === 'oil'));
@@ -59,7 +73,16 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
     if (!newLog.bikeId) return;
     onAddMaintenance(newLog);
     setShowLogForm(false);
-    setNewLog({ ...newLog, description: '', cost: 0, warrantyMonths: 0 });
+    setNewLog({ 
+      bikeId: '',
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      cost: 0,
+      serviceType: 'routine',
+      warrantyMonths: 0,
+      performedBy: 'In-House Workshop',
+      attachmentUrl: ''
+    });
   };
 
   const selectedBike = bikes.find(b => b.id === selectedBikeId);
@@ -132,7 +155,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                 {workshopBikes.length === 0 ? (
                   <div className="p-20 text-center">
                     <div className="text-4xl mb-4">✨</div>
-                    <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Workspace Clear</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Workspace Clear</p>
                     <p className="text-xs text-gray-400 mt-1">All bikes are currently operational.</p>
                   </div>
                 ) : (
@@ -153,15 +176,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                             setNewLog({ ...newLog, bikeId: bike.id, serviceType: 'repair' });
                             setShowLogForm(true);
                           }}
-                          className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100"
+                          className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
                          >
                            Log Repair
                          </button>
                          <button 
                           onClick={() => setSelectedBikeId(bike.id)}
-                          className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[9px] font-black uppercase tracking-widest"
+                          className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[9px] font-black uppercase tracking-widest transition-colors"
                          >
-                           View Logs
+                           View History
                          </button>
                       </div>
                     </div>
@@ -179,8 +202,32 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {roadmapBikes.map(bike => {
                   const status = getServiceStatus(bike.id);
+                  const daysToNext = 90 - status.days;
+                  
                   return (
-                    <div key={bike.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col justify-between">
+                    <div key={bike.id} className="group relative p-4 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col justify-between transition-all hover:border-amber-200 hover:bg-amber-50/20 cursor-default">
+                       {/* Floating Tooltip/Info Panel */}
+                       <div className="absolute left-1/2 -top-16 -translate-x-1/2 w-48 bg-gray-900 text-white rounded-xl p-3 shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-20 mb-2 scale-90 group-hover:scale-100">
+                          <div className="space-y-1.5">
+                             <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                <span>Last Run</span>
+                                <span className="text-white">{status.lastDate}</span>
+                             </div>
+                             <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                <span>Remaining</span>
+                                <span className={`${daysToNext < 0 ? 'text-red-400' : 'text-green-400'}`}>{daysToNext < 0 ? 'OVERDUE' : `${daysToNext} days`}</span>
+                             </div>
+                             <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full ${daysToNext < 15 ? 'bg-red-500' : 'bg-blue-500'}`} 
+                                  style={{ width: `${Math.max(5, Math.min(100, (status.days / 90) * 100))}%` }}
+                                />
+                             </div>
+                          </div>
+                          {/* Triangle Tip */}
+                          <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
+                       </div>
+
                        <div className="flex justify-between items-start mb-4">
                           <div>
                              <h4 className="font-black text-gray-800 text-sm">{bike.licenseNumber}</h4>
@@ -256,7 +303,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                       <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">{selectedBike.licenseNumber}</h3>
                       <p className="text-xs text-blue-500 font-black uppercase tracking-widest">{selectedBike.makeModel}</p>
                    </div>
-                   <button onClick={() => setSelectedBikeId(null)} className="text-gray-300 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                   <button onClick={() => setSelectedBikeId(null)} className="text-gray-300 hover:text-gray-600 text-3xl leading-none transition-colors">&times;</button>
                 </div>
 
                 <div className="space-y-6">
@@ -276,11 +323,21 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                                     <span className="text-[9px] font-bold text-gray-400 uppercase">{m.date} • {m.serviceType}</span>
                                     <span className="text-[10px] font-black text-gray-700">R{m.cost}</span>
                                  </div>
-                                 {m.warrantyMonths ? (
-                                   <div className="mt-2 text-[8px] font-black text-blue-500 bg-blue-100 px-1.5 py-0.5 rounded-full w-fit uppercase tracking-widest">
-                                      {m.warrantyMonths}M Warranty Applied
-                                   </div>
-                                 ) : null}
+                                 <div className="mt-2 flex items-center space-x-2">
+                                   {m.warrantyMonths ? (
+                                     <div className="text-[8px] font-black text-blue-500 bg-blue-100 px-1.5 py-0.5 rounded-full w-fit uppercase tracking-widest">
+                                        {m.warrantyMonths}M Warranty
+                                     </div>
+                                   ) : null}
+                                   {m.attachmentUrl && (
+                                     <button 
+                                      onClick={() => setViewingAttachment(m.attachmentUrl!)}
+                                      className="text-[8px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full w-fit uppercase tracking-widest"
+                                     >
+                                       View Attachment
+                                     </button>
+                                   )}
+                                 </div>
                               </div>
                             ))
                          )}
@@ -301,7 +358,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
              <div className="bg-amber-50/50 rounded-[2.5rem] border border-dashed border-amber-200 p-10 text-center flex flex-col items-center justify-center min-h-[400px]">
                 <div className="w-20 h-20 bg-white rounded-[2rem] shadow-xl shadow-amber-900/5 flex items-center justify-center text-4xl mb-6">⚙️</div>
                 <h4 className="text-sm font-black text-amber-900 uppercase tracking-widest">Asset Diagnostics</h4>
-                <p className="text-xs text-amber-700/60 mt-2 max-w-[200px] font-medium">Select a motorcycle from the queue or roadmap to view full service telemetry.</p>
+                <p className="text-xs text-amber-700/60 mt-2 max-w-[200px] font-medium leading-relaxed">Select a motorcycle from the queue or roadmap to view full service telemetry and log evidence.</p>
              </div>
            )}
         </div>
@@ -316,7 +373,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                 <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Workshop Job Card</h3>
                 <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">Mechanical Maintenance Logging</p>
               </div>
-              <button type="button" onClick={() => setShowLogForm(false)} className="text-gray-300 hover:text-gray-600 text-4xl leading-none">&times;</button>
+              <button type="button" onClick={() => setShowLogForm(false)} className="text-gray-300 hover:text-gray-600 text-4xl leading-none transition-colors">&times;</button>
             </div>
 
             <div className="space-y-6">
@@ -367,7 +424,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                     type="number"
                     required
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                    value={newLog.cost}
+                    value={newLog.cost || ''}
                     onChange={e => setNewLog({...newLog, cost: Number(e.target.value)})}
                   />
                 </div>
@@ -381,12 +438,83 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Documentation (Evidence / Invoice)</label>
+                <div className="relative">
+                  <input 
+                    type="file"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*,application/pdf"
+                  />
+                  {!newLog.attachmentUrl ? (
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 text-gray-400 hover:bg-amber-50 hover:border-amber-300 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <span className="text-xl">📸</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Attach Doc / Photo</span>
+                    </button>
+                  ) : (
+                    <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-lg">✅</span>
+                        <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">File Encoded</span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setNewLog(prev => ({ ...prev, attachmentUrl: '' }));
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <button type="submit" className="w-full bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95">
               Authorize & Finalize Job Card
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Attachment Viewer Shared with MaintenanceLog */}
+      {viewingAttachment && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 md:p-10">
+          <div className="max-w-4xl w-full bg-white rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in duration-300">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Mechanical Evidence Viewer</h3>
+              <button 
+                onClick={() => setViewingAttachment(null)}
+                className="text-gray-400 hover:text-gray-900 text-4xl leading-none transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-200/50 flex items-center justify-center p-8 min-h-[50vh]">
+              {viewingAttachment.startsWith('data:image') ? (
+                <img src={viewingAttachment} alt="Workshop Evidence" className="max-w-full h-auto shadow-xl rounded-xl" />
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="text-6xl">📄</div>
+                  <p className="text-gray-600 font-bold">Document Attachment (PDF or Other)</p>
+                  <a href={viewingAttachment} download="maintenance-doc" className="inline-block bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Download File</a>
+                </div>
+              )}
+            </div>
+            <div className="p-6 text-center bg-gray-50 border-t border-gray-100">
+              <button onClick={() => setViewingAttachment(null)} className="bg-gray-800 text-white px-10 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Close Viewer</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

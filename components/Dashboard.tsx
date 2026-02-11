@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Bike, Driver, Payment, MaintenanceRecord } from '../types';
 import { 
@@ -156,26 +155,37 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                  {overdueDrivers.length === 0 ? (
                    <p className="text-gray-400 text-xs text-center py-10 font-bold uppercase tracking-widest italic opacity-50">Zero Overdue Accounts 🎉</p>
                  ) : (
-                   overdueDrivers.map(driver => (
-                     <div key={driver.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-red-200 transition-all">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-black">
-                            {driver.name.charAt(0)}
+                   overdueDrivers.map(driver => {
+                     // Calculate payStatus to fix the missing name error in line 162
+                     const driverPayments = payments.filter(p => p.driverId === driver.id && p.weekNumber === currentWeek);
+                     const paidThisWeek = driverPayments.reduce((acc, p) => acc + p.amount, 0);
+                     const payStatus = paidThisWeek >= weeklyTarget ? 'paid' : 'overdue';
+
+                     return (
+                       <div key={driver.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-red-200 transition-all">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black overflow-hidden ${payStatus === 'paid' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                              {driver.profilePictureUrl ? (
+                                <img src={driver.profilePictureUrl} alt={driver.name} className="w-full h-full object-cover" />
+                              ) : (
+                                driver.name.charAt(0)
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800 text-xs">{driver.name}</p>
+                              <p className="text-[10px] text-gray-400 font-bold">{driver.contact}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-gray-800 text-xs">{driver.name}</p>
-                            <p className="text-[10px] text-gray-400 font-bold">{driver.contact}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => sendReminder(driver)}
-                          className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm"
-                          title="Send WhatsApp Reminder"
-                        >
-                          💬
-                        </button>
-                     </div>
-                   ))
+                          <button 
+                            onClick={() => sendReminder(driver)}
+                            className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                            title="Send WhatsApp Reminder"
+                          >
+                            💬
+                          </button>
+                       </div>
+                     );
+                   })
                  )}
                </div>
             </div>

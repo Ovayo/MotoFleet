@@ -174,7 +174,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({ drivers, payments, on
                 <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 sticky left-0 bg-white group-hover:bg-gray-50">
                     <div className="font-medium text-gray-800 whitespace-nowrap">{driver.name}</div>
-                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">{driver.driverCode}</div>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">{driver.city}</div>
                   </td>
                   
                   {weeklyPaid.map((amount, i) => (
