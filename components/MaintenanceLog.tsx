@@ -6,15 +6,19 @@ interface MaintenanceLogProps {
   bikes: Bike[];
   maintenance: MaintenanceRecord[];
   onAddMaintenance: (record: Omit<MaintenanceRecord, 'id'>) => void;
+  onUpdateMaintenance: (record: MaintenanceRecord) => void;
+  onDeleteMaintenance: (id: string) => void;
   workshops: Workshop[];
 }
 
-const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onAddMaintenance, workshops }) => {
+const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onAddMaintenance, onUpdateMaintenance, onDeleteMaintenance, workshops }) => {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   
-  const [newRecord, setNewRecord] = useState<Omit<MaintenanceRecord, 'id'>>({
+  const [formData, setFormData] = useState<Omit<MaintenanceRecord, 'id'>>({
     bikeId: bikes[0]?.id || '',
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -29,17 +33,43 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewRecord(prev => ({ ...prev, attachmentUrl: reader.result as string }));
+        setFormData(prev => ({ ...prev, attachmentUrl: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleEdit = (record: MaintenanceRecord) => {
+    setEditingId(record.id);
+    setFormData({
+      bikeId: record.bikeId,
+      date: record.date,
+      description: record.description,
+      cost: record.cost,
+      serviceType: record.serviceType,
+      performedBy: record.performedBy || 'In-House Workshop',
+      attachmentUrl: record.attachmentUrl || ''
+    });
+    setShowForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAddMaintenance(newRecord);
+    if (editingId) {
+      onUpdateMaintenance({ ...formData, id: editingId });
+    } else {
+      onAddMaintenance(formData);
+    }
+    resetForm();
+  };
+
+  const resetForm = () => {
     setShowForm(false);
-    setNewRecord({
+    setEditingId(null);
+    setFormData({
       bikeId: bikes[0]?.id || '',
       date: new Date().toISOString().split('T')[0],
       description: '',
@@ -51,7 +81,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
   };
 
   const removeAttachment = () => {
-    setNewRecord(prev => ({ ...prev, attachmentUrl: '' }));
+    setFormData(prev => ({ ...prev, attachmentUrl: '' }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -63,7 +93,10 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
           <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Capture technical telemetry and operational costs.</p>
         </div>
         <button 
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) resetForm();
+            else setShowForm(true);
+          }}
           className="bg-red-600 text-white px-6 py-2.5 rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-100 font-black uppercase text-[10px] tracking-widest"
         >
           {showForm ? 'Cancel Entry' : '+ Log Expense'}
@@ -71,14 +104,14 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-xl border border-red-50 animate-in fade-in slide-in-from-top-4 duration-300">
+        <form ref={formRef} onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-xl border border-red-50 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Asset Allocation</label>
               <select 
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm appearance-none"
-                value={newRecord.bikeId}
-                onChange={e => setNewRecord({...newRecord, bikeId: e.target.value})}
+                value={formData.bikeId}
+                onChange={e => setFormData({...formData, bikeId: e.target.value})}
               >
                 {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
               </select>
@@ -87,8 +120,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Job Category</label>
               <select 
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm appearance-none"
-                value={newRecord.serviceType}
-                onChange={e => setNewRecord({...newRecord, serviceType: e.target.value as any})}
+                value={formData.serviceType}
+                onChange={e => setFormData({...formData, serviceType: e.target.value as any})}
               >
                 <option value="routine">Routine Service</option>
                 <option value="repair">Major Repair</option>
@@ -106,8 +139,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                 required
                 placeholder="0.00"
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm"
-                value={newRecord.cost || ''}
-                onChange={e => setNewRecord({...newRecord, cost: Number(e.target.value)})}
+                value={formData.cost || ''}
+                onChange={e => setFormData({...formData, cost: Number(e.target.value)})}
               />
             </div>
             <div className="space-y-1">
@@ -116,8 +149,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                 type="date"
                 required
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm"
-                value={newRecord.date}
-                onChange={e => setNewRecord({...newRecord, date: e.target.value})}
+                value={formData.date}
+                onChange={e => setFormData({...formData, date: e.target.value})}
               />
             </div>
 
@@ -125,8 +158,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Service Provider / Partner</label>
               <select 
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm appearance-none"
-                value={newRecord.performedBy}
-                onChange={e => setNewRecord({...newRecord, performedBy: e.target.value})}
+                value={formData.performedBy}
+                onChange={e => setFormData({...formData, performedBy: e.target.value})}
               >
                 <option value="In-House Workshop">In-House Workshop</option>
                 {workshops.map(w => (
@@ -142,8 +175,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                 required
                 placeholder="e.g. Major engine rebuild and sprocket kit"
                 className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-sm"
-                value={newRecord.description}
-                onChange={e => setNewRecord({...newRecord, description: e.target.value})}
+                value={formData.description}
+                onChange={e => setFormData({...formData, description: e.target.value})}
               />
             </div>
             
@@ -157,7 +190,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
-                {!newRecord.attachmentUrl ? (
+                {!formData.attachmentUrl ? (
                   <button 
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -184,9 +217,18 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
               </div>
             </div>
             
-            <div className="lg:col-span-4 flex justify-end pt-4">
+            <div className="lg:col-span-4 flex justify-end pt-4 space-x-3">
+              {editingId && (
+                <button 
+                  type="button"
+                  onClick={resetForm}
+                  className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs"
+                >
+                  Cancel Edit
+                </button>
+              )}
               <button type="submit" className="bg-red-600 text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95">
-                Commit Operational Expense
+                {editingId ? 'Update Operational Expense' : 'Commit Operational Expense'}
               </button>
             </div>
           </div>
@@ -235,16 +277,32 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
-                  {record.attachmentUrl && (
+                <div className="flex items-center space-x-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
+                  <div className="flex items-center space-x-2">
+                    {record.attachmentUrl && (
+                      <button 
+                        onClick={() => setViewingAttachment(record.attachmentUrl!)}
+                        className="p-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-all border border-gray-100"
+                        title="View Receipt"
+                      >
+                        <span className="text-base">📄</span>
+                      </button>
+                    )}
                     <button 
-                      onClick={() => setViewingAttachment(record.attachmentUrl!)}
-                      className="flex items-center space-x-2 px-4 py-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-all border border-gray-100"
+                      onClick={() => handleEdit(record)}
+                      className="p-2.5 bg-gray-50 rounded-xl hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-all border border-gray-100"
+                      title="Edit Entry"
                     >
-                      <span className="text-base">📄</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest">Open Slip</span>
+                      <span className="text-base">✏️</span>
                     </button>
-                  )}
+                    <button 
+                      onClick={() => onDeleteMaintenance(record.id)}
+                      className="p-2.5 bg-gray-50 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all border border-gray-100"
+                      title="Delete Entry"
+                    >
+                      <span className="text-base">🗑️</span>
+                    </button>
+                  </div>
                   <div className="text-right">
                     <div className="text-xl font-black text-gray-800">R{record.cost.toLocaleString()}</div>
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Entry Total</p>

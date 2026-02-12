@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS, INITIAL_WORKSHOPS } from './data';
 import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop } from './types';
@@ -110,6 +111,16 @@ const App: React.FC = () => {
     setMaintenance(prev => [...prev, { ...record, id: `m-${Date.now()}` }]);
   };
 
+  const handleUpdateMaintenance = (updatedRecord: MaintenanceRecord) => {
+    setMaintenance(prev => prev.map(m => m.id === updatedRecord.id ? updatedRecord : m));
+  };
+
+  const handleDeleteMaintenance = (id: string) => {
+    if (window.confirm("Confirm deletion of this expense record?")) {
+      setMaintenance(prev => prev.filter(m => m.id !== id));
+    }
+  };
+
   const handleAddFine = (fine: Omit<TrafficFine, 'id'>) => {
     setFines(prev => [...prev, { ...fine, id: `f-${Date.now()}` }]);
   };
@@ -211,7 +222,7 @@ const App: React.FC = () => {
           />
         );
       case 'maintenance':
-        return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} workshops={workshops} />;
+        return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} onUpdateMaintenance={handleUpdateMaintenance} onDeleteMaintenance={handleDeleteMaintenance} workshops={workshops} />;
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'mechanic-portal':
