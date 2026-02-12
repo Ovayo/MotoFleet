@@ -1,27 +1,26 @@
-
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Driver, Payment, Bike, MaintenanceRecord } from '../types';
 
 interface DriverProfileProps {
   driver: Driver;
+  onUpdateDriver: (updatedDriver: Driver) => void;
   payments: Payment[];
   bike?: Bike;
   maintenance: MaintenanceRecord[];
   weeklyTarget: number;
 }
 
-const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, maintenance, weeklyTarget }) => {
-  // Financial analysis for the driver
+const DriverProfile: React.FC<DriverProfileProps> = ({ driver, onUpdateDriver, payments, bike, maintenance, weeklyTarget }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const stats = useMemo(() => {
     const driverPayments = payments.filter(p => p.driverId === driver.id);
     const totalPaid = driverPayments.reduce((acc, p) => acc + p.amount, 0);
     
-    // Estimate weeks active (simplified for demo)
-    const weeksActive = 4; // Should ideally be calculated from start date
+    const weeksActive = 4;
     const expected = weeksActive * weeklyTarget;
     const balance = totalPaid - expected;
     
-    // Streak calculation (consecutive weeks with full payment)
     const sortedPayments = [...driverPayments].sort((a, b) => b.weekNumber - a.weekNumber);
     let streak = 0;
     for (let p of sortedPayments) {
@@ -29,22 +28,29 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
       else break;
     }
 
-    // Bike maintenance stats
     const bikeMaintenance = bike ? maintenance.filter(m => m.bikeId === bike.id) : [];
     const totalMaintenanceCost = bikeMaintenance.reduce((acc, m) => acc + m.cost, 0);
 
     return { totalPaid, balance, streak, expected, bikeMaintenance, totalMaintenanceCost };
   }, [payments, driver.id, weeklyTarget, bike, maintenance]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpdateDriver({ ...driver, profilePictureUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const currentMonth = months[new Date().getMonth()];
-
-  // Using a stable high-quality motorcycle image from Unsplash
   const headerBgImage = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=2070&auto=format&fit=crop";
 
   return (
     <div className="w-full space-y-6 pb-20 md:pb-8">
-      {/* Motivation Header with Image Background and Green Tint */}
       <div 
         className="relative overflow-hidden rounded-3xl shadow-xl shadow-green-100"
         style={{
@@ -56,12 +62,19 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
         <div className="relative z-10 p-6 md:p-8 text-white">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center space-x-6">
-               <div className="w-20 h-20 md:w-24 md:h-24 rounded-[2rem] bg-white/20 backdrop-blur-md border-4 border-white/30 overflow-hidden shrink-0 flex items-center justify-center font-black text-2xl">
+               <div 
+                className="relative group w-20 h-20 md:w-24 md:h-24 rounded-[2rem] bg-white/20 backdrop-blur-md border-4 border-white/30 overflow-hidden shrink-0 flex items-center justify-center font-black text-2xl cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+               >
                  {driver.profilePictureUrl ? (
                    <img src={driver.profilePictureUrl} alt={driver.name} className="w-full h-full object-cover" />
                  ) : (
                    driver.name.substring(0, 2).toUpperCase()
                  )}
+                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-[10px] font-black uppercase text-white tracking-widest text-center px-2">Update Photo</span>
+                 </div>
+                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                </div>
                <div className="space-y-1">
                 <div className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
@@ -89,7 +102,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
         </div>
       </div>
 
-      {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Current Balance</p>
@@ -132,7 +144,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Payment Portfolio Grid */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -169,7 +180,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
           </div>
         </div>
 
-        {/* Vehicle Expense Transparency */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 overflow-hidden relative">
           <div className="absolute -right-4 -top-4 text-6xl opacity-[0.03] rotate-12">🔧</div>
           <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight mb-2">Vehicle Care</h3>
@@ -213,7 +223,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({ driver, payments, bike, m
          </div>
       </div>
 
-      {/* Recent History */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-50">
            <h3 className="font-black text-gray-800 uppercase text-sm tracking-wider">Recent Transactions</h3>

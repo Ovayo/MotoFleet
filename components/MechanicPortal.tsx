@@ -1,19 +1,36 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Bike, MaintenanceRecord } from '../types';
+import { Bike, MaintenanceRecord, Workshop } from '../types';
 
 interface MechanicPortalProps {
   bikes: Bike[];
   setBikes: React.Dispatch<React.SetStateAction<Bike[]>>;
   maintenance: MaintenanceRecord[];
   onAddMaintenance: (record: Omit<MaintenanceRecord, 'id'>) => void;
+  workshops: Workshop[];
+  onAddWorkshop: (workshop: Omit<Workshop, 'id'>) => void;
+  onUpdateWorkshop: (id: string, workshop: Omit<Workshop, 'id'>) => void;
+  onDeleteWorkshop: (id: string) => void;
 }
 
-const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, maintenance, onAddMaintenance }) => {
+const MechanicPortal: React.FC<MechanicPortalProps> = ({ 
+  bikes, 
+  setBikes, 
+  maintenance, 
+  onAddMaintenance,
+  workshops,
+  onAddWorkshop,
+  onUpdateWorkshop,
+  onDeleteWorkshop
+}) => {
   const [selectedBikeId, setSelectedBikeId] = useState<string | null>(null);
   const [showLogForm, setShowLogForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'queue' | 'roadmap' | 'warranties'>('queue');
+  const [showWorkshopForm, setShowWorkshopForm] = useState(false);
+  const [editingWorkshopId, setEditingWorkshopId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'queue' | 'roadmap' | 'warranties' | 'workshops'>('queue');
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const [workshopSearch, setWorkshopSearch] = useState('');
+  const [cityFilter, setCityFilter] = useState<'all' | 'JHB' | 'CTN' | 'EL'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
@@ -25,6 +42,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
     warrantyMonths: 0,
     performedBy: 'In-House Workshop',
     attachmentUrl: ''
+  });
+
+  const [workshopFormData, setWorkshopFormData] = useState<Omit<Workshop, 'id'>>({
+    name: '',
+    city: 'JHB',
+    location: '',
+    contact: '',
+    specialization: [],
+    rating: 5
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +94,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
   const workshopBikes = bikes.filter(b => b.status === 'maintenance');
   const roadmapBikes = [...bikes].sort((a, b) => getServiceStatus(b.id).days - getServiceStatus(a.id).days);
 
+  const filteredWorkshops = useMemo(() => {
+    return workshops.filter(w => {
+      const matchesSearch = w.name.toLowerCase().includes(workshopSearch.toLowerCase()) || 
+                           w.specialization.some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
+      const matchesCity = cityFilter === 'all' || w.city === cityFilter;
+      return matchesSearch && matchesCity;
+    });
+  }, [workshops, workshopSearch, cityFilter]);
+
   const handleLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLog.bikeId) return;
@@ -85,11 +120,46 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
     });
   };
 
+  const handleWorkshopSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingWorkshopId) {
+      onUpdateWorkshop(editingWorkshopId, workshopFormData);
+    } else {
+      onAddWorkshop(workshopFormData);
+    }
+    closeWorkshopForm();
+  };
+
+  const openEditWorkshop = (workshop: Workshop) => {
+    setEditingWorkshopId(workshop.id);
+    setWorkshopFormData({
+      name: workshop.name,
+      city: workshop.city,
+      location: workshop.location,
+      contact: workshop.contact,
+      specialization: workshop.specialization,
+      rating: workshop.rating
+    });
+    setShowWorkshopForm(true);
+  };
+
+  const closeWorkshopForm = () => {
+    setShowWorkshopForm(false);
+    setEditingWorkshopId(null);
+    setWorkshopFormData({
+      name: '',
+      city: 'JHB',
+      location: '',
+      contact: '',
+      specialization: [],
+      rating: 5
+    });
+  };
+
   const selectedBike = bikes.find(b => b.id === selectedBikeId);
 
   return (
     <div className="w-full space-y-6">
-      {/* Mechanic Header Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-amber-100 flex items-center justify-between">
            <div>
@@ -121,34 +191,23 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
         </button>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex space-x-2 bg-gray-100 p-1.5 rounded-2xl w-fit">
-        <button 
-          onClick={() => setActiveTab('queue')}
-          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'queue' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          Workshop Queue
-        </button>
-        <button 
-          onClick={() => setActiveTab('roadmap')}
-          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'roadmap' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          Service Roadmap
-        </button>
-        <button 
-          onClick={() => setActiveTab('warranties')}
-          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'warranties' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          Guarantees
-        </button>
+      <div className="flex flex-wrap gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit">
+        {(['queue', 'roadmap', 'warranties', 'workshops'] as const).map(tab => (
+          <button 
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            {tab === 'workshops' ? 'Partner Directory' : tab}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Main Content Area */}
         <div className="xl:col-span-2">
           {activeTab === 'queue' && (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-              <div className="p-6 border-b border-gray-50 bg-gray-50/30">
+              <div className="p-6 border-b border-gray-100 bg-gray-50/30">
                 <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Active Workshop Queue</h3>
               </div>
               <div className="divide-y divide-gray-100">
@@ -159,36 +218,42 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                     <p className="text-xs text-gray-400 mt-1">All bikes are currently operational.</p>
                   </div>
                 ) : (
-                  workshopBikes.map(bike => (
-                    <div key={bike.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-amber-50/20 transition-colors">
-                      <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                         <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-xl font-black">
-                            {bike.licenseNumber.substring(0,2)}
-                         </div>
-                         <div>
-                            <h4 className="font-black text-gray-800 uppercase tracking-tight">{bike.licenseNumber}</h4>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
-                         </div>
+                  workshopBikes.map(bike => {
+                    const assignedWorkshop = workshops.find(w => w.id === bike.assignedWorkshopId);
+                    return (
+                      <div key={bike.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-amber-50/20 transition-colors">
+                        <div className="flex items-center space-x-4 mb-4 md:mb-0">
+                           <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-xl font-black">
+                              {bike.licenseNumber.substring(0,2)}
+                           </div>
+                           <div>
+                              <h4 className="font-black text-gray-800 uppercase tracking-tight">{bike.licenseNumber}</h4>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
+                              {assignedWorkshop && (
+                                <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-1">Dispatched To: {assignedWorkshop.name}</p>
+                              )}
+                           </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                           <button 
+                            onClick={() => {
+                              setNewLog({ ...newLog, bikeId: bike.id, serviceType: 'repair', performedBy: assignedWorkshop?.name || 'In-House Workshop' });
+                              setShowLogForm(true);
+                            }}
+                            className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                           >
+                             Log Repair
+                           </button>
+                           <button 
+                            onClick={() => setSelectedBikeId(bike.id)}
+                            className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[9px] font-black uppercase tracking-widest transition-colors"
+                           >
+                             View History
+                           </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                         <button 
-                          onClick={() => {
-                            setNewLog({ ...newLog, bikeId: bike.id, serviceType: 'repair' });
-                            setShowLogForm(true);
-                          }}
-                          className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                         >
-                           Log Repair
-                         </button>
-                         <button 
-                          onClick={() => setSelectedBikeId(bike.id)}
-                          className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[9px] font-black uppercase tracking-widest transition-colors"
-                         >
-                           View History
-                         </button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -196,38 +261,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
 
           {activeTab === 'roadmap' && (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-               <div className="p-6 border-b border-gray-50 bg-gray-50/30">
+               <div className="p-6 border-b border-gray-100 bg-gray-50/30">
                 <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Fleet Service Roadmap</h3>
               </div>
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {roadmapBikes.map(bike => {
                   const status = getServiceStatus(bike.id);
-                  const daysToNext = 90 - status.days;
                   
                   return (
                     <div key={bike.id} className="group relative p-4 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col justify-between transition-all hover:border-amber-200 hover:bg-amber-50/20 cursor-default">
-                       {/* Floating Tooltip/Info Panel */}
-                       <div className="absolute left-1/2 -top-16 -translate-x-1/2 w-48 bg-gray-900 text-white rounded-xl p-3 shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-20 mb-2 scale-90 group-hover:scale-100">
-                          <div className="space-y-1.5">
-                             <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-gray-400">
-                                <span>Last Run</span>
-                                <span className="text-white">{status.lastDate}</span>
-                             </div>
-                             <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-gray-400">
-                                <span>Remaining</span>
-                                <span className={`${daysToNext < 0 ? 'text-red-400' : 'text-green-400'}`}>{daysToNext < 0 ? 'OVERDUE' : `${daysToNext} days`}</span>
-                             </div>
-                             <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full ${daysToNext < 15 ? 'bg-red-500' : 'bg-blue-500'}`} 
-                                  style={{ width: `${Math.max(5, Math.min(100, (status.days / 90) * 100))}%` }}
-                                />
-                             </div>
-                          </div>
-                          {/* Triangle Tip */}
-                          <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
-                       </div>
-
                        <div className="flex justify-between items-start mb-4">
                           <div>
                              <h4 className="font-black text-gray-800 text-sm">{bike.licenseNumber}</h4>
@@ -259,18 +301,119 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
             </div>
           )}
 
-          {activeTab === 'warranties' && (
+          {activeTab === 'workshops' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-left-4">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="relative flex-1">
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                   <input 
+                    type="text" 
+                    placeholder="Search workshop or specialization..." 
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                    value={workshopSearch}
+                    onChange={(e) => setWorkshopSearch(e.target.value)}
+                   />
+                </div>
+                <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
+                  {(['all', 'JHB', 'CTN', 'EL'] as const).map(c => (
+                    <button 
+                      key={c}
+                      onClick={() => setCityFilter(c)}
+                      className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${cityFilter === c ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+                <button 
+                  onClick={() => setShowWorkshopForm(true)}
+                  className="bg-amber-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all shrink-0 active:scale-95"
+                >
+                  + Add Workshop
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {filteredWorkshops.map(w => (
+                   <div key={w.id} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all group relative">
+                      <div className="flex justify-between items-start mb-4">
+                         <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl">🏙️</div>
+                            <div className="min-w-0">
+                               <h4 className="font-black text-gray-800 uppercase tracking-tight truncate">{w.name}</h4>
+                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{w.location} • {w.city}</p>
+                            </div>
+                         </div>
+                         <div className="flex flex-col items-end gap-2 shrink-0">
+                           <div className="flex items-center text-amber-500 font-black text-sm">
+                              <span className="mr-1">★</span>
+                              <span>{w.rating}</span>
+                           </div>
+                           <div className="flex items-center gap-1">
+                              <button 
+                                onClick={() => openEditWorkshop(w)}
+                                className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100"
+                                title="Edit Workshop"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                onClick={() => onDeleteWorkshop(w.id)}
+                                className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                title="Remove Partner"
+                              >
+                                🗑️
+                              </button>
+                           </div>
+                         </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {w.specialization.map((s, i) => (
+                          <span key={i} className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-gray-100">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-4 border-t border-gray-50">
+                        <a 
+                          href={`tel:${w.contact}`}
+                          className="flex-1 flex items-center justify-center space-x-2 py-3 bg-amber-50 text-amber-700 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-600 hover:text-white transition-all"
+                        >
+                          <span>📞</span>
+                          <span>Call Shop</span>
+                        </a>
+                        <a 
+                          href={`https://wa.me/${w.contact.replace(/\s/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center space-x-2 py-3 bg-green-50 text-green-700 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-green-600 hover:text-white transition-all"
+                        >
+                          <span>💬</span>
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                   </div>
+                 ))}
+                 {filteredWorkshops.length === 0 && (
+                   <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200">
+                      <div className="text-4xl mb-4">🔍</div>
+                      <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">No workshops match your criteria</p>
+                      <button onClick={() => {setWorkshopSearch(''); setCityFilter('all');}} className="mt-4 text-amber-600 font-black text-[10px] uppercase tracking-widest hover:underline">Clear all filters</button>
+                   </div>
+                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'warranties' && ( activeWarranties.length > 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-               <div className="p-6 border-b border-gray-50 bg-gray-50/30">
+               <div className="p-6 border-b border-gray-100 bg-gray-50/30">
                 <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Active Mechanical Guarantees</h3>
               </div>
               <div className="divide-y divide-gray-100">
-                {activeWarranties.length === 0 ? (
-                  <div className="p-20 text-center">
-                    <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest italic opacity-50">No items currently under warranty.</p>
-                  </div>
-                ) : (
-                  activeWarranties.map(w => {
+                {activeWarranties.map(w => {
                     const bike = bikes.find(b => b.id === w.bikeId);
                     return (
                       <div key={w.id} className="p-6 flex items-center justify-between hover:bg-blue-50/20 transition-colors">
@@ -288,13 +431,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                       </div>
                     )
                   })
-                )}
+                }
               </div>
             </div>
-          )}
+          ) : (
+            <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-24 text-center animate-in fade-in slide-in-from-left-4">
+               <div className="text-4xl mb-4">🛡️</div>
+               <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest italic">No active mechanical guarantees in the system</p>
+            </div>
+          ))}
         </div>
 
-        {/* Sidebar: Details & Recent Logs */}
         <div className="space-y-6">
            {selectedBike ? (
              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 animate-in slide-in-from-right-4">
@@ -323,21 +470,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                                     <span className="text-[9px] font-bold text-gray-400 uppercase">{m.date} • {m.serviceType}</span>
                                     <span className="text-[10px] font-black text-gray-700">R{m.cost}</span>
                                  </div>
-                                 <div className="mt-2 flex items-center space-x-2">
-                                   {m.warrantyMonths ? (
-                                     <div className="text-[8px] font-black text-blue-500 bg-blue-100 px-1.5 py-0.5 rounded-full w-fit uppercase tracking-widest">
-                                        {m.warrantyMonths}M Warranty
-                                     </div>
-                                   ) : null}
-                                   {m.attachmentUrl && (
-                                     <button 
-                                      onClick={() => setViewingAttachment(m.attachmentUrl!)}
-                                      className="text-[8px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full w-fit uppercase tracking-widest"
-                                     >
-                                       View Attachment
-                                     </button>
-                                   )}
-                                 </div>
                               </div>
                             ))
                          )}
@@ -364,6 +496,102 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
         </div>
       </div>
 
+      {/* Robust Workshop Registration Modal */}
+      {showWorkshopForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+           <form onSubmit={handleWorkshopSubmit} className="bg-white rounded-[2.5rem] shadow-2xl max-w-xl w-full p-10 space-y-6 animate-in zoom-in duration-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">
+                    {editingWorkshopId ? 'Modify Partner Details' : 'Register Partner Workshop'}
+                  </h3>
+                  <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mt-1">
+                    Complete all telemetry for technical assignment
+                  </p>
+                </div>
+                <button type="button" onClick={closeWorkshopForm} className="text-gray-300 hover:text-gray-600 text-4xl leading-none">&times;</button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                 <div className="md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Workshop Identification</label>
+                    <input 
+                      required 
+                      placeholder="e.g. Master Moto Works"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
+                      value={workshopFormData.name} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, name: e.target.value})} 
+                    />
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Region / City</label>
+                    <select 
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all appearance-none" 
+                      value={workshopFormData.city} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, city: e.target.value as any})}
+                    >
+                       <option value="JHB">Johannesburg</option>
+                       <option value="CTN">Cape Town</option>
+                       <option value="EL">East London</option>
+                    </select>
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Direct Contact Number</label>
+                    <input 
+                      required 
+                      placeholder="011 000 0000"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
+                      value={workshopFormData.contact} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, contact: e.target.value})} 
+                    />
+                 </div>
+
+                 <div className="md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Geographic Location / Address</label>
+                    <input 
+                      required 
+                      placeholder="Street address and suburb"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
+                      value={workshopFormData.location} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, location: e.target.value})} 
+                    />
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Technical Rating (1.0 - 5.0)</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="5" 
+                      step="0.1" 
+                      required
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
+                      value={workshopFormData.rating} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, rating: Number(e.target.value)})} 
+                    />
+                 </div>
+
+                 <div className="md:col-span-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Core Specializations (Comma Separated)</label>
+                    <input 
+                      placeholder="e.g. Hero, Honda, Engine Rebuilds, Tyres"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
+                      value={workshopFormData.specialization.join(', ')} 
+                      onChange={e => setWorkshopFormData({...workshopFormData, specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')})} 
+                    />
+                    <p className="text-[8px] text-gray-400 font-bold uppercase mt-2 px-1">Example: Hero, Big Boy, Major Repairs, Electrical</p>
+                 </div>
+              </div>
+
+              <button type="submit" className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl hover:bg-black transition-all active:scale-95">
+                {editingWorkshopId ? 'Authorize Changes' : 'Confirm Registration'}
+              </button>
+           </form>
+        </div>
+      )}
+
       {/* Modern Job Card Modal */}
       {showLogForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -384,7 +612,11 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                     required
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
                     value={newLog.bikeId}
-                    onChange={e => setNewLog({...newLog, bikeId: e.target.value})}
+                    onChange={e => {
+                        const bike = bikes.find(b => b.id === e.target.value);
+                        const ws = workshops.find(w => w.id === bike?.assignedWorkshopId);
+                        setNewLog({...newLog, bikeId: e.target.value, performedBy: ws?.name || 'In-House Workshop'});
+                    }}
                   >
                     <option value="">Choose Motorcycle...</option>
                     {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
@@ -429,13 +661,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Guarantee (Months)</label>
-                  <input 
-                    type="number"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                    value={newLog.warrantyMonths}
-                    onChange={e => setNewLog({...newLog, warrantyMonths: Number(e.target.value)})}
-                  />
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Performed By</label>
+                  <select 
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
+                    value={newLog.performedBy}
+                    onChange={e => setNewLog({...newLog, performedBy: e.target.value})}
+                  >
+                    <option value="In-House Workshop">In-House Workshop</option>
+                    {workshops.map(w => (
+                      <option key={w.id} value={w.name}>{w.name} ({w.city})</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -487,7 +723,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({ bikes, setBikes, mainte
         </div>
       )}
 
-      {/* Attachment Viewer Shared with MaintenanceLog */}
       {viewingAttachment && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 md:p-10">
           <div className="max-w-4xl w-full bg-white rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in duration-300">

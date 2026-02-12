@@ -1,3 +1,4 @@
+
 export interface Bike {
   id: string;
   makeModel: string;
@@ -9,6 +10,7 @@ export interface Bike {
   city: string;
   status: 'active' | 'maintenance' | 'idle';
   assignedDriverId?: string;
+  assignedWorkshopId?: string;
   notes?: string;
   licenseDiskExpiry?: string;
   enatisVerified?: boolean;
@@ -61,6 +63,16 @@ export interface TrafficFine {
   description: string;
   status: 'unpaid' | 'paid' | 'contested';
   attachmentUrl?: string;
+}
+
+export interface Workshop {
+  id: string;
+  name: string;
+  location: string;
+  city: string;
+  contact: string;
+  specialization: string[];
+  rating: number;
 }
 
 export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines';

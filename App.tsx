@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS } from './data';
-import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine } from './types';
+import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS, INITIAL_WORKSHOPS } from './data';
+import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import FleetManagement from './components/FleetManagement';
@@ -19,6 +18,7 @@ const STORAGE_KEYS = {
   PAYMENTS: 'motofleet_payments_v3',
   MAINTENANCE: 'motofleet_maintenance_v3',
   FINES: 'motofleet_fines_v3',
+  WORKSHOPS: 'motofleet_workshops_v3',
 };
 
 const App: React.FC = () => {
@@ -63,6 +63,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [workshops, setWorkshops] = useState<Workshop[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.WORKSHOPS);
+    return saved ? JSON.parse(saved) : INITIAL_WORKSHOPS;
+  });
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
   }, [bikes]);
@@ -82,6 +87,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.FINES, JSON.stringify(fines));
   }, [fines]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(workshops));
+  }, [workshops]);
 
   const WEEKLY_TARGET = 650;
 
@@ -107,6 +116,27 @@ const App: React.FC = () => {
 
   const handleUpdateFineStatus = (id: string, status: TrafficFine['status']) => {
     setFines(prev => prev.map(f => f.id === id ? { ...f, status } : f));
+  };
+
+  const handleAddWorkshop = (workshop: Omit<Workshop, 'id'>) => {
+    setWorkshops(prev => [...prev, { ...workshop, id: `w-${Date.now()}` }]);
+  };
+
+  const handleUpdateWorkshop = (id: string, updatedWorkshop: Omit<Workshop, 'id'>) => {
+    setWorkshops(prev => prev.map(w => w.id === id ? { ...updatedWorkshop, id } : w));
+  };
+
+  const handleDeleteWorkshop = (id: string) => {
+    if (window.confirm('Are you sure you want to remove this partner workshop?')) {
+      setWorkshops(prev => prev.filter(w => w.id !== id));
+    }
+  };
+
+  const handleUpdateDriver = (updatedDriver: Driver) => {
+    setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
+    if (loggedDriver && loggedDriver.id === updatedDriver.id) {
+      setLoggedDriver(updatedDriver);
+    }
   };
 
   const handleDriverLogin = (contact: string) => {
@@ -138,6 +168,7 @@ const App: React.FC = () => {
       return (
         <DriverProfile 
           driver={loggedDriver} 
+          onUpdateDriver={handleUpdateDriver}
           payments={payments} 
           bike={bikes.find(b => b.assignedDriverId === loggedDriver.id)} 
           maintenance={maintenance}
@@ -153,6 +184,10 @@ const App: React.FC = () => {
           setBikes={setBikes}
           maintenance={maintenance} 
           onAddMaintenance={handleAddMaintenance} 
+          workshops={workshops}
+          onAddWorkshop={handleAddWorkshop}
+          onUpdateWorkshop={handleUpdateWorkshop}
+          onDeleteWorkshop={handleDeleteWorkshop}
         />
       );
     }
@@ -161,7 +196,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
       case 'fleet':
-        return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
+        return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
       case 'drivers':
         return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
@@ -176,11 +211,22 @@ const App: React.FC = () => {
           />
         );
       case 'maintenance':
-        return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
+        return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} workshops={workshops} />;
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'mechanic-portal':
-        return <MechanicPortal bikes={bikes} setBikes={setBikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
+        return (
+          <MechanicPortal 
+            bikes={bikes} 
+            setBikes={setBikes} 
+            maintenance={maintenance} 
+            onAddMaintenance={handleAddMaintenance} 
+            workshops={workshops} 
+            onAddWorkshop={handleAddWorkshop}
+            onUpdateWorkshop={handleUpdateWorkshop}
+            onDeleteWorkshop={handleDeleteWorkshop}
+          />
+        );
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
@@ -232,12 +278,16 @@ const App: React.FC = () => {
                  Sign Out
                </button>
              )}
-            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base ${
+            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
               role === 'admin' ? 'bg-blue-600 shadow-blue-100' : 
               role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
               'bg-green-600 shadow-green-100'
             }`}>
-              {role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()}
+              {role === 'driver' && loggedDriver?.profilePictureUrl ? (
+                <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
+              ) : (
+                role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()
+              )}
             </div>
           </div>
         </header>

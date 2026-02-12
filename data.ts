@@ -1,4 +1,5 @@
-import { Bike, Driver, Payment } from './types';
+
+import { Bike, Driver, Payment, Workshop } from './types';
 
 export const INITIAL_BIKES: Bike[] = [
   { 
@@ -80,4 +81,11 @@ export const INITIAL_PAYMENTS: Payment[] = [
   { id: 'p4', driverId: 'd1', amount: 1700, date: '2023-10-22', weekNumber: 4, type: 'rental' },
   { id: 'p5', driverId: 'd5', amount: 650, date: '2023-10-01', weekNumber: 1, type: 'rental' },
   { id: 'p6', driverId: 'd5', amount: 1000, date: '2023-10-15', weekNumber: 3, type: 'rental' },
+];
+
+export const INITIAL_WORKSHOPS: Workshop[] = [
+  { id: 'w1', name: 'Elite Moto JHB', city: 'JHB', location: 'Wynberg Main Rd', contact: '0114401234', specialization: ['Hero', 'Engine Rebuilds'], rating: 4.8 },
+  { id: 'w2', name: 'The Bike Doctor', city: 'CTN', location: 'Salt River Circle', contact: '0214475588', specialization: ['Honda', 'General Service'], rating: 4.5 },
+  { id: 'w3', name: 'FastLane Spares', city: 'EL', location: 'Berea, Pearce St', contact: '0437229900', specialization: ['Tyres', 'Chain & Sprocket'], rating: 4.2 },
+  { id: 'w4', name: 'MotoMaster Sandton', city: 'JHB', location: 'Kramerville', contact: '0825559988', specialization: ['Big Boy Specialist', 'Electronics'], rating: 4.7 },
 ];

@@ -133,6 +133,11 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     }
   };
 
+  const removePhoto = () => {
+    setFormData(prev => ({ ...prev, profilePictureUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingDriverId) {
@@ -179,21 +184,39 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">eNaTIS Compliant Form</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-3 flex flex-col items-center mb-6">
+        <div className="lg:col-span-3 flex flex-col items-center mb-8">
           <div className="relative group">
-            <div className="w-24 h-24 rounded-3xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-200 group-hover:border-blue-300 transition-all">
+            <div className="w-32 h-32 rounded-[2.5rem] bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-200 group-hover:border-blue-300 transition-all shadow-inner">
               {formData.profilePictureUrl ? (
                 <img src={formData.profilePictureUrl} alt="Profile Preview" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl opacity-30">📷</span>
+                <span className="text-4xl opacity-20">👤</span>
               )}
+              <div 
+                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <span className="text-white font-black uppercase text-[10px] tracking-widest">Change Photo</span>
+              </div>
             </div>
+            
+            {formData.profilePictureUrl && (
+              <button 
+                type="button" 
+                onClick={removePhoto}
+                className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow-lg flex items-center justify-center text-lg hover:bg-red-600 transition-all border-2 border-white"
+                title="Remove Photo"
+              >
+                &times;
+              </button>
+            )}
+            
             <button 
               type="button" 
               onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-2 -right-2 bg-blue-600 text-white w-8 h-8 rounded-xl shadow-lg flex items-center justify-center text-sm hover:bg-blue-700 transition-all"
+              className="absolute -bottom-2 -right-2 bg-blue-600 text-white w-9 h-9 rounded-2xl shadow-xl flex items-center justify-center text-sm hover:bg-blue-700 transition-all border-4 border-white"
             >
-              +
+              📷
             </button>
             <input 
               type="file" 
@@ -203,7 +226,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
               className="hidden" 
             />
           </div>
-          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-3">Upload Driver Photo</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Driver Profile Asset</p>
         </div>
 
         <div className="space-y-1">
@@ -339,20 +362,9 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-pulse' : ''}`}></div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center group/status-label">
+                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center">
+                    <span className={`w-3 h-3 rounded-full mr-2.5 shrink-0 shadow-sm border-2 border-white ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-pulse' : ''}`} title={statusLabels[payStatus]}></span>
                     <span className="truncate">{driver.name}</span>
-                    <div className="relative flex items-center ml-3 shrink-0">
-                      <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full border ${
-                        payStatus === 'fully-paid' ? 'bg-green-50 border-green-100 text-green-600' :
-                        payStatus === 'partial' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                        'bg-red-50 border-red-100 text-red-600'
-                      }`}>
-                         <span className={`w-1.5 h-1.5 rounded-full ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-ping' : ''}`}></span>
-                         <span className="text-[8px] font-black uppercase tracking-widest">
-                           {statusLabels[payStatus]}
-                         </span>
-                      </div>
-                    </div>
                   </h3>
                   <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
                     <span className="text-blue-500 mr-2">📍 {driver.city}</span>
@@ -450,12 +462,15 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                       payStatus === 'fully-paid' ? 'text-green-500' :
                       payStatus === 'partial' ? 'text-amber-600' : 'text-red-500'
                     }`}>Payment Standing</p>
-                    <p className={`text-[10px] font-black uppercase ${
-                      payStatus === 'fully-paid' ? 'text-green-600' :
-                      payStatus === 'partial' ? 'text-amber-700' : 'text-red-600'
-                    }`}>
-                      {statusLabels[payStatus]}
-                    </p>
+                    <div className="flex items-center space-x-1.5">
+                       <span className={`w-1.5 h-1.5 rounded-full ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-ping' : ''}`}></span>
+                       <p className={`text-[10px] font-black uppercase ${
+                         payStatus === 'fully-paid' ? 'text-green-600' :
+                         payStatus === 'partial' ? 'text-amber-700' : 'text-red-600'
+                       }`}>
+                         {statusLabels[payStatus]}
+                       </p>
+                    </div>
                   </div>
                   
                   <div className="space-y-1.5 pt-1">

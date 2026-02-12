@@ -108,7 +108,13 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                  {overdueDrivers.map(driver => (
                    <div key={driver.id} className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
                       <div className="flex items-center space-x-3 overflow-hidden">
-                        <div className="w-9 h-9 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black text-xs shrink-0">!</div>
+                        <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
+                          {driver.profilePictureUrl ? (
+                            <img src={driver.profilePictureUrl} className="w-full h-full object-cover" />
+                          ) : (
+                            '!'
+                          )}
+                        </div>
                         <div className="overflow-hidden">
                           <p className="font-bold text-gray-800 text-[11px] truncate">{driver.name}</p>
                           <p className="text-[9px] text-gray-400 font-bold truncate">{driver.contact}</p>
