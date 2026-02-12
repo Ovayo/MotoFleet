@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useMemo } from 'react';
 import { Driver, Bike, Payment } from '../types';
 
 interface DriverManagementProps {
@@ -15,7 +16,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // State for contact OTP verification
   const [verifyingContactId, setVerifyingContactId] = useState<string | null>(null);
   const [otpStep, setOtpStep] = useState<'idle' | 'sending' | 'input'>('idle');
   const [otpValue, setOtpValue] = useState('');
@@ -34,12 +34,53 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     profilePictureUrl: ''
   });
 
-  const getPaymentStatus = (driverId: string) => {
-    const currentWeek = 4;
-    const paid = payments
-      .filter(p => p.driverId === driverId && p.weekNumber === currentWeek)
+  // Calculate weeks in current month to set an accurate target
+  const weeksInCurrentMonth = useMemo(() => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const days = lastDay.getDate();
+    return days > 28 ? 5 : 4;
+  }, []);
+
+  const getMonthlyDue = () => weeksInCurrentMonth * weeklyTarget;
+
+  const getFullBalance = (driverId: string) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const totalPaidInMonth = payments
+      .filter(p => {
+        const pDate = new Date(p.date);
+        return p.driverId === driverId && 
+               pDate.getMonth() === currentMonth && 
+               pDate.getFullYear() === currentYear;
+      })
       .reduce((sum, p) => sum + p.amount, 0);
-    return paid >= weeklyTarget ? 'paid' : 'overdue';
+    
+    const totalDue = getMonthlyDue();
+    return totalPaidInMonth - totalDue;
+  };
+
+  const getPaymentStatus = (driverId: string) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const totalPaidInMonth = payments
+      .filter(p => {
+        const pDate = new Date(p.date);
+        return p.driverId === driverId && 
+               pDate.getMonth() === currentMonth && 
+               pDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, p) => sum + p.amount, 0);
+    
+    const totalDue = getMonthlyDue();
+
+    if (totalPaidInMonth >= totalDue) return 'fully-paid';
+    if (totalPaidInMonth > 0) return 'partial';
+    return 'overdue';
   };
 
   const getExpiryStatus = (expiry?: string) => {
@@ -106,17 +147,25 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
   };
 
   const sendReminder = (driver: Driver) => {
-    const currentWeek = 4;
-    const paid = payments
-      .filter(p => p.driverId === driver.id && p.weekNumber === currentWeek)
-      .reduce((sum, p) => sum + p.amount, 0);
-    const balance = paid - weeklyTarget;
+    const balance = getFullBalance(driver.id);
+    const bike = bikes.find(b => b.assignedDriverId === driver.id);
+    const payStatus = getPaymentStatus(driver.id);
     
-    let message = `Hello ${driver.name}, this is a reminder from MotoFleet eNaTIS compliance. `;
-    if (balance < 0) {
-      message += `Your account is currently overdue by R${Math.abs(balance)}. Please settle your weekly R${weeklyTarget} rental as soon as possible. Thank you!`;
+    let message = `Hello ${driver.name}, this is an official monthly payment update from MotoFleet Management. `;
+    
+    if (payStatus === 'fully-paid') {
+      message += `\n\nYour account is currently in good standing. You have fully paid your R${getMonthlyDue()} target for this month. `;
+      message += `Keep up the excellent work! Safe driving!`;
+    } else if (payStatus === 'partial') {
+      message += `\n\nYour account for this month is in partial arrears by R${Math.abs(balance)}. `;
+      message += `Target: R${getMonthlyDue()}. `;
+      if (bike) message += `\nVehicle: ${bike.licenseNumber}`;
+      message += `\n\nPlease settle the remaining amount as soon as possible.`;
     } else {
-      message += `Your account is up to date! Please remember to check your license disc expiry. Safe driving!`;
+      message += `\n\nYour account is currently OVERDUE by R${Math.abs(balance)}. `;
+      message += `No payments have been recorded for the current cycle (Target: R${getMonthlyDue()}). `;
+      if (bike) message += `\nVehicle: ${bike.licenseNumber}`;
+      message += `\n\nPlease ensure this amount is settled immediately to avoid service interruption.`;
     }
     
     const encodedMsg = encodeURIComponent(message);
@@ -131,7 +180,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">eNaTIS Compliant Form</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Profile Picture Upload Section */}
         <div className="lg:col-span-3 flex flex-col items-center mb-6">
           <div className="relative group">
             <div className="w-24 h-24 rounded-3xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-200 group-hover:border-blue-300 transition-all">
@@ -223,14 +271,36 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
         {drivers.map(driver => {
           const assignedBike = bikes.find(b => b.assignedDriverId === driver.id);
           const payStatus = getPaymentStatus(driver.id);
+          const balance = getFullBalance(driver.id);
           const licStatus = getExpiryStatus(driver.licenseExpiry);
           const pdpStatus = getExpiryStatus(driver.pdpExpiry);
           const isVerifyingContact = verifyingContactId === driver.id;
           const initials = driver.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
+          const statusColors = {
+            'fully-paid': 'bg-green-500',
+            'partial': 'bg-amber-500',
+            'overdue': 'bg-red-500 animate-pulse'
+          };
+
+          const statusGradient = {
+            'fully-paid': 'from-green-500 to-emerald-600',
+            'partial': 'from-amber-400 to-orange-500',
+            'overdue': 'from-red-500 to-orange-600'
+          };
+
+          const statusLabels = {
+            'fully-paid': 'Fully Paid',
+            'partial': 'Partial Payment',
+            'overdue': 'Overdue'
+          };
+
+          // For the progress bar
+          const totalPaidInMonth = getMonthlyDue() + balance;
+          const progressPercent = Math.max(0, Math.min(100, (totalPaidInMonth / getMonthlyDue()) * 100));
+
           return (
             <div key={driver.id} className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 group relative flex flex-col p-8 transition-all hover:shadow-xl hover:shadow-gray-100">
-              {/* Header: Badges & Edit */}
               <div className="flex justify-between items-start mb-6">
                 <div className="flex -space-x-1">
                   {driver.enatisVerified ? (
@@ -258,22 +328,29 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 </button>
               </div>
 
-              {/* Profile Main */}
               <div className="flex items-center space-x-5 mb-8">
                 <div className="relative">
-                  <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-black text-xl shadow-lg overflow-hidden ${payStatus === 'paid' ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-100' : 'bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-red-100'}`}>
+                  <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-black text-xl shadow-lg overflow-hidden bg-gradient-to-br ${statusGradient[payStatus]} text-white`}>
                     {driver.profilePictureUrl ? (
                       <img src={driver.profilePictureUrl} alt={driver.name} className="w-full h-full object-cover" />
                     ) : (
                       initials
                     )}
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${payStatus === 'paid' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
+                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${statusColors[payStatus]}`}></div>
                 </div>
-                <div>
-                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center">
-                    {driver.name}
-                    <span className={`w-2.5 h-2.5 rounded-full ml-3 ${payStatus === 'paid' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} title={payStatus === 'paid' ? 'Account in Good Standing' : 'Account Overdue'}></span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center group/status-label">
+                    <span className="truncate">{driver.name}</span>
+                    <div className="relative flex items-center ml-3 shrink-0">
+                      <span className={`w-2.5 h-2.5 rounded-full ${statusColors[payStatus]} ring-2 ring-white shadow-sm`} title={statusLabels[payStatus]}></span>
+                      {payStatus === 'overdue' && (
+                        <span className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping opacity-75"></span>
+                      )}
+                      <span className="ml-2 text-[8px] font-black uppercase tracking-widest text-gray-400 opacity-0 group-hover/status-label:opacity-100 transition-opacity whitespace-nowrap hidden sm:inline-block">
+                        {statusLabels[payStatus]}
+                      </span>
+                    </div>
                   </h3>
                   <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
                     <span className="text-blue-500 mr-2">📍 {driver.city}</span>
@@ -282,7 +359,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 </div>
               </div>
               
-              {/* Detailed Specs */}
               <div className="space-y-4 mb-8 flex-grow">
                 <div className="group/contact flex items-center justify-between p-3 bg-gray-50/50 rounded-2xl hover:bg-blue-50 transition-colors">
                   <div className="flex items-center space-x-3">
@@ -299,7 +375,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   )}
                 </div>
 
-                {/* OTP Verification Interactive Section */}
                 {isVerifyingContact && (
                   <div className="bg-blue-600 p-5 rounded-3xl text-white shadow-xl shadow-blue-100 animate-in zoom-in duration-300">
                     {otpStep === 'sending' ? (
@@ -341,7 +416,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   <span className="text-[11px] font-medium text-gray-500 leading-snug line-clamp-2 uppercase tracking-tighter">{driver.address}</span>
                 </div>
                 
-                {/* Expiry Tracking Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className={`p-4 rounded-3xl border ${
                     licStatus === 'valid' ? 'bg-green-50/50 border-green-100' :
@@ -365,35 +439,74 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   </div>
                 </div>
 
-                {/* Assigned Asset Display */}
-                {assignedBike ? (
-                  <div className="p-4 bg-blue-50 rounded-3xl border border-blue-100/50 flex items-center justify-between group/bike transition-all hover:bg-blue-100/50">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-2xl grayscale group-hover/bike:grayscale-0 transition-all">🏍️</div>
+                <div className={`p-4 rounded-3xl border flex flex-col space-y-2 transition-colors ${
+                  payStatus === 'fully-paid' ? 'bg-green-50 border-green-100' :
+                  payStatus === 'partial' ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <p className={`text-[8px] font-black uppercase tracking-widest ${
+                      payStatus === 'fully-paid' ? 'text-green-500' :
+                      payStatus === 'partial' ? 'text-amber-600' : 'text-red-500'
+                    }`}>Payment Status</p>
+                    <p className={`text-[10px] font-black uppercase ${
+                      payStatus === 'fully-paid' ? 'text-green-600' :
+                      payStatus === 'partial' ? 'text-amber-700' : 'text-red-600'
+                    }`}>
+                      {statusLabels[payStatus]}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                       <span className="text-gray-400">Balance</span>
+                       <span className={balance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                         {balance >= 0 ? `+R${balance}` : `R${balance}`}
+                       </span>
+                    </div>
+                    {payStatus !== 'fully-paid' && (
+                      <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${payStatus === 'partial' ? 'bg-amber-500' : 'bg-red-500'}`} 
+                          style={{ width: `${progressPercent}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {assignedBike && (
+                    <div className={`flex items-center space-x-4 pt-2 border-t mt-2 ${
+                      payStatus === 'fully-paid' ? 'border-green-100' :
+                      payStatus === 'partial' ? 'border-amber-100' : 'border-red-100'
+                    }`}>
+                      <div className="text-xl">🏍️</div>
                       <div>
-                        <p className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em] mb-0.5">Assigned Asset</p>
-                        <p className="text-xs font-black text-blue-900 tracking-tight">{assignedBike.licenseNumber}</p>
+                        <p className={`text-[8px] font-black uppercase tracking-[0.2em] ${
+                          payStatus === 'fully-paid' ? 'text-green-400' :
+                          payStatus === 'partial' ? 'text-amber-500' : 'text-red-400'
+                        }`}>Assigned Asset</p>
+                        <p className={`text-xs font-black tracking-tight ${
+                          payStatus === 'fully-paid' ? 'text-green-900' :
+                          payStatus === 'partial' ? 'text-amber-900' : 'text-red-900'
+                        }`}>{assignedBike.licenseNumber}</p>
                       </div>
                     </div>
-                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[10px] font-black text-blue-600 shadow-sm">
-                      #{assignedBike.id}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-gray-50 rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-center py-6">
-                    <span className="text-xl mb-1 opacity-20">🏍️</span>
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest italic">Inventory Pending</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              {/* Action: Communication */}
               <button 
                 onClick={() => sendReminder(driver)}
-                className="w-full bg-gray-900 hover:bg-green-600 text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all shadow-xl shadow-gray-200 hover:shadow-green-100 flex items-center justify-center group/btn active:scale-95"
+                className={`w-full text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all shadow-xl flex items-center justify-center group/btn active:scale-95 ${
+                  payStatus === 'overdue' ? 'bg-red-600 hover:bg-red-700 shadow-red-100' : 
+                  payStatus === 'partial' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' :
+                  'bg-gray-900 hover:bg-green-600 shadow-gray-200'
+                }`}
               >
-                <span className="mr-3 transition-transform group-hover/btn:scale-125">💬</span> 
-                Contact via WhatsApp
+                <span className="mr-3 transition-transform group-hover/btn:scale-125">
+                  {payStatus === 'fully-paid' ? '💬' : '⚠️'}
+                </span> 
+                {payStatus === 'fully-paid' ? 'Contact via WhatsApp' : 
+                 payStatus === 'partial' ? 'Send Arrears Alert' : 'Send Payment Warning'}
               </button>
             </div>
           );

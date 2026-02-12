@@ -1,15 +1,3 @@
-
-export interface TrackerInfo {
-  imei: string;
-  signalStrength: 'excellent' | 'good' | 'poor' | 'offline';
-  battery: number;
-  status: 'moving' | 'parked' | 'idle' | 'ignited';
-  lastSeen: string;
-  lat: number;
-  lng: number;
-  speed?: number;
-}
-
 export interface Bike {
   id: string;
   makeModel: string;
@@ -24,7 +12,6 @@ export interface Bike {
   notes?: string;
   licenseDiskExpiry?: string;
   enatisVerified?: boolean;
-  tracker?: TrackerInfo;
 }
 
 export interface Driver {
@@ -64,4 +51,16 @@ export interface MaintenanceRecord {
   attachmentUrl?: string;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'tracking' | 'driver-profile' | 'mechanic-portal';
+export interface TrafficFine {
+  id: string;
+  bikeId: string;
+  driverId: string;
+  amount: number;
+  date: string;
+  noticeNumber: string;
+  description: string;
+  status: 'unpaid' | 'paid' | 'contested';
+  attachmentUrl?: string;
+}
+
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines';

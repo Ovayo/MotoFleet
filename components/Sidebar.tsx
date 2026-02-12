@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { View } from '../types';
 
@@ -16,10 +15,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
   const adminItems = [
     { id: 'dashboard', label: 'Overview', icon: '📊' },
     { id: 'fleet', label: 'Fleet Hub', icon: '🏍️' },
-    { id: 'tracking', label: 'MotoTrack', icon: '📍' },
     { id: 'drivers', label: 'Operators', icon: '👤' },
     { id: 'payments', label: 'Payments', icon: '💰' },
     { id: 'maintenance', label: 'Service', icon: '🔧' },
+    { id: 'fines', label: 'Fines', icon: '🚔' },
   ];
 
   const mechanicItems = [
@@ -42,7 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
 
   return (
     <>
-      {/* Mobile Hamburger Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="md:hidden fixed top-5 left-4 z-[60] bg-white w-10 h-10 rounded-xl shadow-lg border border-gray-100 flex items-center justify-center transition-transform active:scale-95"
@@ -61,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
             <h2 className="text-lg font-black text-gray-800 tracking-tight uppercase">MotoFleet</h2>
           </div>
           
-          <nav className="space-y-1.5 flex-1">
+          <nav className="space-y-1.5 flex-1 overflow-y-auto pr-2 no-scrollbar">
             {menuItems.map((item) => (
               <button
                 key={item.id}
@@ -109,7 +107,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
         </div>
       </aside>
       
-      {/* Overlay for mobile sidebar */}
       {isOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 animate-in fade-in duration-300" 

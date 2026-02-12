@@ -1,4 +1,3 @@
-
 import { Bike, Driver, Payment } from './types';
 
 export const INITIAL_BIKES: Bike[] = [
@@ -14,8 +13,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd1', 
     licenseDiskExpiry: '2025-06-15', 
-    enatisVerified: true,
-    tracker: { imei: '862001004921', signalStrength: 'excellent', battery: 98, status: 'moving', lastSeen: new Date().toISOString(), lat: -26.2041, lng: 28.0473, speed: 45 }
+    enatisVerified: true
   },
   { 
     id: 'b2', 
@@ -29,8 +27,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd2', 
     licenseDiskExpiry: '2026-01-20', 
-    enatisVerified: true,
-    tracker: { imei: '862001004922', signalStrength: 'good', battery: 85, status: 'parked', lastSeen: new Date().toISOString(), lat: -26.1952, lng: 28.0340 }
+    enatisVerified: true
   },
   { 
     id: 'b3', 
@@ -44,8 +41,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd3', 
     licenseDiskExpiry: '2024-12-10', 
-    enatisVerified: true,
-    tracker: { imei: '862001004923', signalStrength: 'excellent', battery: 100, status: 'moving', lastSeen: new Date().toISOString(), lat: -33.9249, lng: 18.4241, speed: 60 }
+    enatisVerified: true
   },
   { 
     id: 'b4', 
@@ -58,13 +54,12 @@ export const INITIAL_BIKES: Bike[] = [
     city: 'JHB', 
     status: 'active', 
     assignedDriverId: 'd4', 
-    licenseDiskExpiry: '2025-03-30',
-    tracker: { imei: '862001004924', signalStrength: 'poor', battery: 12, status: 'idle', lastSeen: new Date().toISOString(), lat: -26.1800, lng: 28.0500 }
+    licenseDiskExpiry: '2025-03-30'
   },
-  { id: 'b5', makeModel: 'Big Boy Velocity Cargo 15', licenseNumber: 'CAA 642 635', vin: 'BBV1522', year: '2025', dealer: 'Webuycars', price: 'R15,800', city: 'CTN', status: 'active', assignedDriverId: 'd5', licenseDiskExpiry: '2026-02-14', tracker: { imei: '862001004925', signalStrength: 'excellent', battery: 94, status: 'moving', lastSeen: new Date().toISOString(), lat: -33.9350, lng: 18.4350, speed: 32 } },
-  { id: 'b6', makeModel: '2024 Lifan Lifan 125', licenseNumber: 'KHN393EC', vin: 'LIF00921', year: '2024', dealer: 'Webuycars', price: 'N/A', city: 'EL', status: 'active', assignedDriverId: 'd6', licenseDiskExpiry: '2025-11-11', tracker: { imei: '862001004926', signalStrength: 'good', battery: 72, status: 'parked', lastSeen: new Date().toISOString(), lat: -32.9977, lng: 27.8960 } },
-  { id: 'b7', makeModel: 'Big Boy 150, Velocity Cargo', licenseNumber: 'JZN233EC', vin: 'BBV991', year: 'N/A', dealer: 'Ronald Muzenda', price: 'R5,000', city: 'EL', status: 'active', assignedDriverId: 'd7', licenseDiskExpiry: '2025-05-01', tracker: { imei: '862001004927', signalStrength: 'excellent', battery: 88, status: 'ignited', lastSeen: new Date().toISOString(), lat: -32.9800, lng: 27.9000 } },
-  { id: 'b8', makeModel: 'Big Boy 150, Velocity Cargo', licenseNumber: 'KGT424EC', vin: 'BBV100', year: 'N/A', dealer: 'Ronald Muzenda', price: 'R8,000', city: 'EL', status: 'active', assignedDriverId: 'd8', licenseDiskExpiry: '2024-11-20', tracker: { imei: '862001004928', signalStrength: 'offline', battery: 0, status: 'parked', lastSeen: '2 hours ago', lat: -32.9900, lng: 27.9100 } },
+  { id: 'b5', makeModel: 'Big Boy Velocity Cargo 15', licenseNumber: 'CAA 642 635', vin: 'BBV1522', year: '2025', dealer: 'Webuycars', price: 'R15,800', city: 'CTN', status: 'active', assignedDriverId: 'd5', licenseDiskExpiry: '2026-02-14' },
+  { id: 'b6', makeModel: '2024 Lifan Lifan 125', licenseNumber: 'KHN393EC', vin: 'LIF00921', year: '2024', dealer: 'Webuycars', price: 'N/A', city: 'EL', status: 'active', assignedDriverId: 'd6', licenseDiskExpiry: '2025-11-11' },
+  { id: 'b7', makeModel: 'Big Boy 150, Velocity Cargo', licenseNumber: 'JZN233EC', vin: 'BBV991', year: 'N/A', dealer: 'Ronald Muzenda', price: 'R5,000', city: 'EL', status: 'active', assignedDriverId: 'd7', licenseDiskExpiry: '2025-05-01' },
+  { id: 'b8', makeModel: 'Big Boy 150, Velocity Cargo', licenseNumber: 'KGT424EC', vin: 'BBV100', year: 'N/A', dealer: 'Ronald Muzenda', price: 'R8,000', city: 'EL', status: 'active', assignedDriverId: 'd8', licenseDiskExpiry: '2024-11-20' },
 ];
 
 export const INITIAL_DRIVERS: Driver[] = [

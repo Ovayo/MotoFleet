@@ -1,23 +1,24 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS } from './data';
-import { Bike, Driver, Payment, MaintenanceRecord, View } from './types';
+import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import FleetManagement from './components/FleetManagement';
 import DriverManagement from './components/DriverManagement';
 import PaymentTracking from './components/PaymentTracking';
 import MaintenanceLog from './components/MaintenanceLog';
-import TrackingPortal from './components/TrackingPortal';
 import DriverProfile from './components/DriverProfile';
 import DriverLogin from './components/DriverLogin';
 import MechanicPortal from './components/MechanicPortal';
+import TrafficFines from './components/TrafficFines';
 
 const STORAGE_KEYS = {
   BIKES: 'motofleet_bikes_v3',
   DRIVERS: 'motofleet_drivers_v3',
   PAYMENTS: 'motofleet_payments_v3',
   MAINTENANCE: 'motofleet_maintenance_v3',
+  FINES: 'motofleet_fines_v3',
 };
 
 const App: React.FC = () => {
@@ -57,6 +58,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [fines, setFines] = useState<TrafficFine[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.FINES);
+    return saved ? JSON.parse(saved) : [];
+  });
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
   }, [bikes]);
@@ -73,14 +79,34 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance));
   }, [maintenance]);
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.FINES, JSON.stringify(fines));
+  }, [fines]);
+
   const WEEKLY_TARGET = 650;
 
   const handleAddPayment = (payment: Omit<Payment, 'id'>) => {
     setPayments(prev => [...prev, { ...payment, id: `p-${Date.now()}` }]);
   };
 
+  const handleUpdatePayment = (id: string, amount: number) => {
+    setPayments(prev => prev.map(p => p.id === id ? { ...p, amount } : p));
+  };
+
+  const handleDeletePayment = (id: string) => {
+    setPayments(prev => prev.filter(p => p.id !== id));
+  };
+
   const handleAddMaintenance = (record: Omit<MaintenanceRecord, 'id'>) => {
     setMaintenance(prev => [...prev, { ...record, id: `m-${Date.now()}` }]);
+  };
+
+  const handleAddFine = (fine: Omit<TrafficFine, 'id'>) => {
+    setFines(prev => [...prev, { ...fine, id: `f-${Date.now()}` }]);
+  };
+
+  const handleUpdateFineStatus = (id: string, status: TrafficFine['status']) => {
+    setFines(prev => prev.map(f => f.id === id ? { ...f, status } : f));
   };
 
   const handleDriverLogin = (contact: string) => {
@@ -136,14 +162,23 @@ const App: React.FC = () => {
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
-      case 'tracking':
-        return <TrackingPortal bikes={bikes} />;
       case 'drivers':
         return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
-        return <PaymentTracking drivers={drivers} payments={payments} onAddPayment={handleAddPayment} weeklyTarget={WEEKLY_TARGET} />;
+        return (
+          <PaymentTracking 
+            drivers={drivers} 
+            payments={payments} 
+            onAddPayment={handleAddPayment} 
+            onUpdatePayment={handleUpdatePayment}
+            onDeletePayment={handleDeletePayment}
+            weeklyTarget={WEEKLY_TARGET} 
+          />
+        );
       case 'maintenance':
         return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
+      case 'fines':
+        return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'mechanic-portal':
         return <MechanicPortal bikes={bikes} setBikes={setBikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} />;
       default:
@@ -170,9 +205,7 @@ const App: React.FC = () => {
         }}
       />
       
-      {/* Responsive Main Container */}
       <main className={`flex-1 transition-all duration-300 w-full md:ml-64 p-4 md:p-8 pt-20 md:pt-8`}>
-        {/* Sticky Mobile-Responsive Header */}
         <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
@@ -209,7 +242,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* View Content Area */}
         <div className="animate-in fade-in slide-in-from-bottom-3 duration-500">
           {renderView()}
         </div>

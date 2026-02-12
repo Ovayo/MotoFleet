@@ -213,10 +213,13 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <h4 className="font-black text-gray-800 text-lg uppercase leading-tight">{bike.licenseNumber}</h4>
                     <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
                   </div>
-                  <div className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest truncate max-w-[150px] ${
-                    bike.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  <div className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest truncate max-w-[150px] flex items-center space-x-1.5 ${
+                    bike.status === 'active' ? 'bg-green-100 text-green-700' : 
+                    bike.status === 'maintenance' ? 'bg-red-100 text-red-700' : 
+                    'bg-amber-100 text-amber-700'
                   }`}>
-                    {bike.status}{driver ? ` - ${driver.name}` : ''}
+                    <span className={`w-1.5 h-1.5 rounded-full ${bike.status === 'active' ? 'bg-green-500' : bike.status === 'maintenance' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
+                    <span>{bike.status}</span>
                   </div>
                 </div>
 
@@ -226,7 +229,13 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Assigned Operator</p>
                     <p className="text-xs font-bold text-gray-800">{driver?.name || 'Unassigned'}</p>
                   </div>
-                  {driver && <button onClick={() => sendWhatsApp(driver)} className="text-xl">💬</button>}
+                  <button 
+                    onClick={() => setAssigningBikeId(bike.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-100 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-50 transition-colors"
+                  >
+                    {driver ? 'Change' : 'Assign'}
+                  </button>
+                  {driver && <button onClick={() => sendWhatsApp(driver)} className="text-xl ml-1">💬</button>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -248,7 +257,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
                   </div>
                   <button onClick={() => setHistoryBikeId(bike.id)} className="flex-1 py-2 bg-gray-100 rounded-xl text-[9px] font-black uppercase tracking-widest">Full Log</button>
-                  <button onClick={() => setAssigningBikeId(bike.id)} className="flex-[1.5] py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">Assign Driver</button>
                   <button onClick={() => handleDeleteBike(bike.id)} className="p-2 bg-red-50 text-red-600 rounded-xl">🗑️</button>
                 </div>
               </div>
@@ -274,14 +282,33 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                 const disk = getDiskStatus(bike.licenseDiskExpiry);
                 const service = getServiceStatus(bike.id);
                 return (
-                  <tr key={bike.id} className="hover:bg-gray-50/50 transition-all">
+                  <tr key={bike.id} className="hover:bg-gray-50/50 transition-all group">
                     <td className="px-8 py-6">
                       <div className="font-black text-gray-900 uppercase tracking-tight text-lg">{bike.licenseNumber}</div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-xs font-bold text-gray-800">{driver?.name || '—'}</div>
-                      <p className="text-[9px] text-gray-400 uppercase">{driver?.contact || 'Unassigned'}</p>
+                      {driver ? (
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-bold text-gray-800 truncate max-w-[120px]">{driver.name}</span>
+                            <button 
+                              onClick={() => setAssigningBikeId(bike.id)}
+                              className="text-[9px] text-blue-500 hover:text-blue-700 font-black uppercase tracking-tighter transition-colors"
+                            >
+                              Change
+                            </button>
+                          </div>
+                          <p className="text-[9px] text-gray-400 uppercase">{driver.contact}</p>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setAssigningBikeId(bike.id)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                        >
+                          + Assign Driver
+                        </button>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center space-x-6">
@@ -305,13 +332,13 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <td className="px-8 py-6 text-right">
                       <div className="flex items-center justify-end space-x-4">
                         <div className="relative group/status-select">
-                          <div className={`px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest inline-flex items-center space-x-2 ${
+                          <div className={`px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest inline-flex items-center space-x-2 transition-colors ${
                             bike.status === 'active' ? 'bg-green-50 border-green-100 text-green-700' :
                             bike.status === 'maintenance' ? 'bg-red-50 border-red-100 text-red-700' :
-                            'bg-gray-100 border-gray-200 text-gray-500'
+                            'bg-amber-50 border-amber-100 text-amber-700'
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${bike.status === 'active' ? 'bg-green-500' : bike.status === 'maintenance' ? 'bg-red-500' : 'bg-gray-400'}`}></span>
-                            <span>{bike.status}{driver ? ` - ${driver.name}` : ''}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${bike.status === 'active' ? 'bg-green-500' : bike.status === 'maintenance' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
+                            <span>{bike.status}</span>
                           </div>
                           <select 
                             className="absolute inset-0 opacity-0 cursor-pointer"
@@ -325,7 +352,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                         </div>
                         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
                           <button onClick={() => setHistoryBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Maintenance Log">📜</button>
-                          <button onClick={() => setAssigningBikeId(bike.id)} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Assign Driver</button>
                           <button onClick={() => handleDeleteBike(bike.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-xl">🗑️</button>
                         </div>
                       </div>

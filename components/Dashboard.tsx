@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Bike, Driver, Payment, MaintenanceRecord } from '../types';
 import { 
@@ -34,7 +33,6 @@ const StatCard = ({ title, value, icon, color }: { title: string, value: string,
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, maintenance, weeklyTarget }) => {
-  const [driverLinkCopied, setDriverLinkCopied] = useState(false);
   const totalRevenue = payments.reduce((acc, p) => acc + p.amount, 0);
   const totalExpenses = maintenance.reduce((acc, m) => acc + m.cost, 0);
   const netProfit = totalRevenue - totalExpenses;
@@ -84,7 +82,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
         <div className="lg:col-span-2 space-y-6 md:space-y-10">
-          {/* Responsive Chart Area */}
           <div className="bg-white p-5 md:p-10 rounded-2xl md:rounded-[3rem] shadow-sm border border-gray-100">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight mb-8">Revenue Lifecycle</h3>
             <div className="h-64 md:h-80 w-full">
@@ -102,7 +99,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-            {/* Payment Reminders */}
             <div className="bg-white p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100">
                <div className="flex justify-between items-center mb-6">
                   <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-tight">Accounts Due</h3>
@@ -124,7 +120,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                </div>
             </div>
 
-            {/* Health Overview */}
             <div className="bg-white p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100">
                <div className="flex justify-between items-center mb-6">
                   <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-tight">Compliance</h3>
@@ -145,18 +140,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
         </div>
 
         <div className="space-y-6 md:space-y-10">
-          {/* Responsive Tracking Visual */}
-          <div className="bg-blue-600 p-8 rounded-[2rem] md:rounded-[3rem] shadow-xl text-white relative overflow-hidden group">
-             <div className="absolute -top-10 -right-10 text-[10rem] opacity-5 rotate-12">📍</div>
-             <div className="relative z-10">
-                <p className="bg-white/20 inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest mb-4">Realtime Feed</p>
-                <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">Tracking Hub</h3>
-                <p className="text-blue-100 text-xs mb-8 opacity-80 leading-relaxed">Continuous GPS heartbeat of the entire fleet across South Africa.</p>
-                <button className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Enter Dashboard</button>
-             </div>
-          </div>
-
-          {/* Operational Status Chart */}
           <div className="bg-white p-8 rounded-2xl md:rounded-[3rem] shadow-sm border border-gray-100">
             <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-tight mb-8 text-center">Status Distribution</h3>
             <div className="h-56">
@@ -169,6 +152,12 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                 </PieChart>
               </ResponsiveContainer>
             </div>
+          </div>
+          
+          <div className="bg-gray-900 p-8 rounded-[2rem] md:rounded-[3rem] shadow-xl text-white flex flex-col items-center justify-center text-center">
+             <div className="text-4xl mb-4">✨</div>
+             <h3 className="text-lg font-black uppercase tracking-tight mb-2">System Optimized</h3>
+             <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Fleet management running at peak performance.</p>
           </div>
         </div>
       </div>
