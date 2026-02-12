@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo } from 'react';
 import { Driver, Bike, Payment } from '../types';
 
@@ -280,7 +279,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
           const statusColors = {
             'fully-paid': 'bg-green-500',
             'partial': 'bg-amber-500',
-            'overdue': 'bg-red-500 animate-pulse'
+            'overdue': 'bg-red-500'
           };
 
           const statusGradient = {
@@ -337,19 +336,22 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                       initials
                     )}
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${statusColors[payStatus]}`}></div>
+                  <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-pulse' : ''}`}></div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-black text-gray-800 text-xl leading-tight uppercase tracking-tight flex items-center group/status-label">
                     <span className="truncate">{driver.name}</span>
                     <div className="relative flex items-center ml-3 shrink-0">
-                      <span className={`w-2.5 h-2.5 rounded-full ${statusColors[payStatus]} ring-2 ring-white shadow-sm`} title={statusLabels[payStatus]}></span>
-                      {payStatus === 'overdue' && (
-                        <span className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping opacity-75"></span>
-                      )}
-                      <span className="ml-2 text-[8px] font-black uppercase tracking-widest text-gray-400 opacity-0 group-hover/status-label:opacity-100 transition-opacity whitespace-nowrap hidden sm:inline-block">
-                        {statusLabels[payStatus]}
-                      </span>
+                      <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded-full border ${
+                        payStatus === 'fully-paid' ? 'bg-green-50 border-green-100 text-green-600' :
+                        payStatus === 'partial' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                        'bg-red-50 border-red-100 text-red-600'
+                      }`}>
+                         <span className={`w-1.5 h-1.5 rounded-full ${statusColors[payStatus]} ${payStatus === 'overdue' ? 'animate-ping' : ''}`}></span>
+                         <span className="text-[8px] font-black uppercase tracking-widest">
+                           {statusLabels[payStatus]}
+                         </span>
+                      </div>
                     </div>
                   </h3>
                   <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
@@ -447,7 +449,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                     <p className={`text-[8px] font-black uppercase tracking-widest ${
                       payStatus === 'fully-paid' ? 'text-green-500' :
                       payStatus === 'partial' ? 'text-amber-600' : 'text-red-500'
-                    }`}>Payment Status</p>
+                    }`}>Payment Standing</p>
                     <p className={`text-[10px] font-black uppercase ${
                       payStatus === 'fully-paid' ? 'text-green-600' :
                       payStatus === 'partial' ? 'text-amber-700' : 'text-red-600'

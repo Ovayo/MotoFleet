@@ -13,6 +13,7 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
   const [showForm, setShowForm] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [newFine, setNewFine] = useState<Omit<TrafficFine, 'id'>>({
     bikeId: '',
@@ -34,6 +35,24 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDuplicate = (fine: TrafficFine) => {
+    setNewFine({
+      bikeId: fine.bikeId,
+      driverId: fine.driverId,
+      amount: fine.amount,
+      date: fine.date,
+      noticeNumber: '', // Keep unique identifier empty
+      description: fine.description,
+      status: 'unpaid', // Default to unpaid for new record
+      attachmentUrl: '' // Don't copy attachment as it's a different notice
+    });
+    setShowForm(true);
+    // Scroll to form
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,7 +88,7 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-red-50 animate-in fade-in slide-in-from-top-4 duration-300">
+        <form ref={formRef} onSubmit={handleSubmit} className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-red-50 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vehicle</label>
@@ -186,7 +205,7 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
                 <div className="flex items-center space-x-5 w-full md:w-auto">
                   <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-sm">👮</div>
                   <div>
-                    <h4 className="font-black text-gray-800 uppercase tracking-tight leading-tight">{fine.noticeNumber} — R{fine.amount}</h4>
+                    <h4 className="font-black text-gray-800 uppercase tracking-tight leading-tight">{fine.noticeNumber || 'Pending No.'} — R{fine.amount}</h4>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
                        {bike?.licenseNumber} • {driver?.name} • {new Date(fine.date).toLocaleDateString()}
                     </p>
@@ -195,10 +214,17 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
                 </div>
 
                 <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
+                  <button 
+                    onClick={() => handleDuplicate(fine)}
+                    className="p-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors border border-gray-100"
+                    title="Duplicate Fine"
+                  >
+                    👯
+                  </button>
                   {fine.attachmentUrl && (
                     <button 
                       onClick={() => setViewingAttachment(fine.attachmentUrl!)}
-                      className="p-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors"
+                      className="p-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors border border-gray-100"
                       title="View Notice"
                     >
                       📄
