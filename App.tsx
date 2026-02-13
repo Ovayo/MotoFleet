@@ -124,6 +124,12 @@ const App: React.FC = () => {
     setIsCloudSyncing(false);
   };
 
+  const handleClearNotifications = () => {
+    if (window.confirm("Are you sure you want to wipe the communication logs? This action cannot be undone.")) {
+      setNotifications([]);
+    }
+  };
+
   const handleAddPayment = (payment: Omit<Payment, 'id'>) => {
     setPayments(prev => [...(prev || []), { ...payment, id: `p-${Date.now()}` }]);
   };
@@ -298,7 +304,7 @@ const App: React.FC = () => {
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'communications':
-        return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} isSyncing={isCloudSyncing} />;
+        return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
       case 'tracking':
         return <TrackingPortal bikes={bikes} />;
       default:

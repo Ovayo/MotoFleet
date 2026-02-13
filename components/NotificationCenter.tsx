@@ -7,10 +7,18 @@ interface NotificationCenterProps {
   drivers: Driver[];
   bikes: Bike[];
   onTriggerAutomations: () => void;
+  onClearNotifications: () => void;
   isSyncing: boolean;
 }
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, drivers, bikes, onTriggerAutomations, isSyncing }) => {
+const NotificationCenter: React.FC<NotificationCenterProps> = ({ 
+  notifications, 
+  drivers, 
+  bikes, 
+  onTriggerAutomations, 
+  onClearNotifications,
+  isSyncing 
+}) => {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
@@ -18,18 +26,27 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, 
           <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Logistics Comms Hub</h2>
           <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Automated WhatsApp & System Triggers</p>
         </div>
-        <button 
-          onClick={onTriggerAutomations}
-          disabled={isSyncing}
-          className={`bg-blue-600 text-white px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl transition-all active:scale-95 flex items-center space-x-3 ${isSyncing ? 'opacity-50' : 'hover:bg-blue-700'}`}
-        >
-          {isSyncing ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-          ) : (
-            <span>🚀</span>
-          )}
-          <span>Run Automation Scan</span>
-        </button>
+        <div className="flex items-center space-x-3 w-full md:w-auto">
+          <button 
+            onClick={onClearNotifications}
+            disabled={notifications.length === 0 || isSyncing}
+            className="flex-1 md:flex-none px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all border border-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+          >
+            Clear Comms Logs
+          </button>
+          <button 
+            onClick={onTriggerAutomations}
+            disabled={isSyncing}
+            className={`flex-[2] md:flex-none bg-blue-600 text-white px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-3 ${isSyncing ? 'opacity-50' : 'hover:bg-blue-700'}`}
+          >
+            {isSyncing ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            ) : (
+              <span>🚀</span>
+            )}
+            <span>Run Automation Scan</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -50,13 +67,19 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, 
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
           <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Automation Audit Log</h3>
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Showing last 100 events</span>
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Showing last {notifications.length} events</span>
         </div>
         <div className="divide-y divide-gray-50">
           {notifications.length === 0 ? (
             <div className="py-24 text-center">
-               <div className="text-4xl mb-4">📡</div>
+               <div className="text-4xl mb-4 text-gray-200">📡</div>
                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No communication logs recorded.</p>
+               <button 
+                onClick={onTriggerAutomations}
+                className="mt-4 text-blue-500 font-black text-[9px] uppercase tracking-widest hover:underline"
+               >
+                Initiate first scan
+               </button>
             </div>
           ) : (
             notifications.map(notif => {
@@ -83,9 +106,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ notifications, 
                   <button 
                     onClick={() => {
                       const msg = encodeURIComponent(notif.message);
-                      window.open(`https://wa.me/${driver?.contact.replace(/\s/g, '')}?text=${msg}`, '_blank');
+                      window.open(`https://wa.me/${driver?.contact.replace(/\s+/g, '')}?text=${msg}`, '_blank');
                     }}
                     className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl hover:bg-green-600 hover:text-white transition-all shadow-sm flex items-center justify-center text-xl"
+                    title="Send WhatsApp Reminder"
                   >
                     💬
                   </button>
