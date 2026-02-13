@@ -169,7 +169,8 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
   const requestSupport = () => {
     const message = `Emergency Support Required: Driver ${driver.name}, Vehicle ${bike?.licenseNumber}. I am currently experiencing technical issues. Please assist.`;
-    window.open(`https://wa.me/0718398532?text=${encodeURIComponent(message)}`, '_blank');
+    // Updated to the user's personal WhatsApp number as requested
+    window.open(`https://wa.me/0682170330?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const headerBgImage = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=2070&auto=format&fit=crop";
