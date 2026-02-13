@@ -4,7 +4,7 @@
  * This layer abstracts the underlying storage to support Multi-Tenancy.
  */
 
-const CLOUD_LATENCY = 800;
+const CLOUD_LATENCY = 600;
 
 export class MotoFleetCloud {
   private fleetId: string;
@@ -21,20 +21,28 @@ export class MotoFleetCloud {
   }
 
   /**
-   * Scans browser local storage for any legacy data formats to prevent data loss
+   * Exhaustive scan of browser local storage for any legacy data formats to prevent data loss.
+   * Checks multiple common prefixes used in previous versions of the application.
    */
   private findLegacyData(key: string): string | null {
     const legacyPatterns = [
-      `fleet_${this.fleetId}_${key}`,  // Potential double-prefix bug from early v2
-      `${this.fleetId}_${key}`,        // v1 multi-tenant format
-      key                              // Original single-fleet format
+      `mf_v2_${this.fleetId}_${key}`,     // Self-check
+      `motofleet_${key}`,                // v1 Global prefix
+      `fleet_${this.fleetId}_${key}`,    // Early v2 prefix
+      `${this.fleetId}_${key}`,          // Simple tenant prefix
+      key                                // No prefix (Legacy raw)
     ];
 
     for (const lKey of legacyPatterns) {
-      const data = localStorage.getItem(lKey);
-      if (data && data !== '[]' && data !== '{}') {
-        console.log(`[Cloud Sync] Legacy data discovered in "${lKey}". Recovering to silo...`);
-        return data;
+      try {
+        const data = localStorage.getItem(lKey);
+        // We only migrate if the data is a non-empty array or non-empty object
+        if (data && data !== '[]' && data !== '{}' && data !== 'null' && data !== 'undefined') {
+          console.log(`[Deep Recovery] Found legacy data in "${lKey}". Migrating to silo mf_v2_${this.fleetId}...`);
+          return data;
+        }
+      } catch (e) {
+        console.warn(`[Deep Recovery] Error reading legacy key ${lKey}:`, e);
       }
     }
     return null;
@@ -45,8 +53,9 @@ export class MotoFleetCloud {
       const siloKey = this.getSiloKey(key);
       let saved = localStorage.getItem(siloKey);
 
-      // If nothing in the main silo, try to find and migrate legacy data
-      if (!saved || saved === '[]') {
+      // CRITICAL: Check if we have data in the new silo. 
+      // If not, or if it's an empty "bot" state, look for legacy data to migrate.
+      if (!saved || saved === '[]' || saved === 'null') {
         const legacy = this.findLegacyData(key);
         if (legacy) {
           localStorage.setItem(siloKey, legacy);
@@ -56,9 +65,14 @@ export class MotoFleetCloud {
 
       setTimeout(() => {
         try {
-          resolve(saved ? JSON.parse(saved) : defaultValue);
+          if (!saved) {
+            resolve(defaultValue);
+            return;
+          }
+          const parsed = JSON.parse(saved);
+          resolve(parsed as T);
         } catch (e) {
-          console.error("Parse error for key:", siloKey);
+          console.error(`[Cloud Sync] Parse error for key: ${siloKey}`, e);
           resolve(defaultValue);
         }
       }, CLOUD_LATENCY);
@@ -66,11 +80,20 @@ export class MotoFleetCloud {
   }
 
   async persist<T>(key: string, data: T): Promise<void> {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+       // Optional: We could check if we are overwriting actual data with nothing, 
+       // but the App.tsx 'isHydrated' guard handles this more cleanly.
+    }
+    
     return new Promise((resolve) => {
       setTimeout(() => {
-        localStorage.setItem(this.getSiloKey(key), JSON.stringify(data));
+        try {
+          localStorage.setItem(this.getSiloKey(key), JSON.stringify(data));
+        } catch (e) {
+          console.error(`[Cloud Sync] Persistence failed for key: ${key}`, e);
+        }
         resolve();
-      }, 100); // Fast local persistence
+      }, 50); // Fast local persistence
     });
   }
 
@@ -81,6 +104,8 @@ export class MotoFleetCloud {
     const { drivers, payments, weeklyTarget } = data;
     const notifications: any[] = [];
     
+    if (!drivers || !payments) return [];
+
     drivers.forEach((d: any) => {
        const totalPaid = payments
          .filter((p: any) => p.driverId === d.id)
@@ -93,7 +118,7 @@ export class MotoFleetCloud {
            recipientId: d.id,
            status: 'queued',
            timestamp: new Date().toISOString(),
-           message: `Automated Alert: Operator ${d.name}, account balance check required. Current weekly collection target is R${weeklyTarget}.`
+           message: `Automated Alert: Operator ${d.name}, account balance check required. Weekly target: R${weeklyTarget}.`
          });
        }
     });

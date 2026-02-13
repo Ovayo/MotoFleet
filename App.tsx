@@ -22,22 +22,21 @@ const App: React.FC = () => {
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
-  // 1. Auth State
+  // 1. Authentication & Identity
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
   });
 
-  // 2. Fleet Identification
   const [fleetId, setFleetId] = useState<string | null>(() => {
     const saved = localStorage.getItem('active_fleet_id');
-    // Default to fleet_001 for legacy users who are logged in but lost their fleet pointer
+    // Default to fleet_001 for legacy admins to trigger recovery
     if (!saved && isAdminAuthenticated) return 'fleet_001';
     return saved;
   });
   
   const [fleetName, setFleetName] = useState<string>(() => localStorage.getItem('active_fleet_name') || 'Main Fleet');
   
-  // 3. Hydration Logic (CRITICAL: Prevents data wipe on load)
+  // 2. Hydration State (CRITICAL: Guard against overwriting existing data)
   const [isHydrated, setIsHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -56,7 +55,7 @@ const App: React.FC = () => {
 
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   
-  // Data State
+  // 3. Data Collections
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -65,11 +64,11 @@ const App: React.FC = () => {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
 
-  // Initial Boot & Data Hydration
+  // 4. Lifecycle: Data Recovery & Hydration
   useEffect(() => {
     let isSubscribed = true;
     const hydrate = async () => {
-      // If we don't have a fleet ID yet, we just show the login screen
+      // If we don't have a fleet ID yet, we must wait for login
       if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode) {
         setLoading(false);
         setIsHydrated(false);
@@ -81,6 +80,7 @@ const App: React.FC = () => {
       setIsCloudSyncing(true);
 
       try {
+        // Parallel fetch for all core assets with Deep Recovery Engine
         const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
           cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
           cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
@@ -92,21 +92,23 @@ const App: React.FC = () => {
         ]);
 
         if (isSubscribed) {
-          setBikes(cBikes);
-          setDrivers(cDrivers);
-          setPayments(cPayments);
-          setMaintenance(cMaint);
-          setFines(cFines);
-          setWorkshops(cWorkshops);
-          setNotifications(cNotifs);
+          setBikes(cBikes || []);
+          setDrivers(cDrivers || []);
+          setPayments(cPayments || []);
+          setMaintenance(cMaint || []);
+          setFines(cFines || []);
+          setWorkshops(cWorkshops || []);
+          setNotifications(cNotifs || []);
           
-          setIsHydrated(true); // Now safe to persist changes
+          setIsHydrated(true); // Signal that it is now safe to persist changes
           setLoading(false);
           setIsCloudSyncing(false);
         }
       } catch (err) {
-        console.error("Hydration failed:", err);
-        setLoading(false);
+        console.error("[Hydration Error] System halted to prevent data loss:", err);
+        // We do NOT set loading(false) here if it's a critical crash to prevent overwriting
+        // But for UX, we should probably show an error state if this fails repeatedly.
+        setLoading(false); 
       }
     };
 
@@ -114,7 +116,7 @@ const App: React.FC = () => {
     return () => { isSubscribed = false; };
   }, [fleetId, cloud, isDedicatedDriverMode, isDedicatedMechanicMode]);
 
-  // Persistence triggers - ONLY fire if isHydrated is TRUE
+  // 5. Lifecycle: Persistence (Only triggers AFTER successful hydration)
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('bikes', bikes); }, [bikes, isHydrated, fleetId, cloud]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('drivers', drivers); }, [drivers, isHydrated, fleetId, cloud]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('payments', payments); }, [payments, isHydrated, fleetId, cloud]);
