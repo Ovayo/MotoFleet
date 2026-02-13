@@ -296,10 +296,18 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                   </div>
                 </div>
 
-                {bike.status === 'maintenance' && workshop && (
-                  <div className="p-3 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Assigned Mechanic</p>
-                    <p className="text-xs font-bold text-red-800 uppercase">{workshop.name}</p>
+                {bike.status === 'maintenance' && (
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex justify-between items-center">
+                    <div>
+                      <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest">Assigned Workshop</p>
+                      <p className="text-xs font-bold text-amber-800 uppercase">{workshop?.name || 'In-House / Pending'}</p>
+                    </div>
+                    <button 
+                      onClick={() => setAssigningWorkshopBikeId(bike.id)}
+                      className="px-3 py-1 bg-white border border-amber-200 rounded-lg text-[8px] font-black text-amber-600 uppercase"
+                    >
+                      {workshop ? 'Change' : 'Assign'}
+                    </button>
                   </div>
                 )}
 
@@ -351,10 +359,10 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
           <table className="w-full text-left">
             <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifier & Driver</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifier & Asset</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Operator</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset Health</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status / Mechanic</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status / Workshop</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions & History</th>
               </tr>
             </thead>
@@ -429,8 +437,18 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                             <option value="idle">Idle</option>
                           </select>
                         </div>
-                        {bike.status === 'maintenance' && workshop && (
-                          <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded">At: {workshop.name}</p>
+                        {bike.status === 'maintenance' && (
+                          <div className="flex items-center space-x-2">
+                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded truncate max-w-[120px]">
+                              {workshop ? `At: ${workshop.name}` : 'No Workshop assigned'}
+                            </p>
+                            <button 
+                              onClick={() => setAssigningWorkshopBikeId(bike.id)}
+                              className="text-[8px] font-black text-amber-600 hover:text-amber-700 uppercase"
+                            >
+                              {workshop ? 'Change' : 'Assign'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -691,7 +709,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={historyChartData}>
                           <defs>
-                            <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="colorCost" x1="0" x2="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
                               <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                             </linearGradient>

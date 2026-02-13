@@ -32,6 +32,8 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   const [workshopSearch, setWorkshopSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<'all' | 'JHB' | 'CTN' | 'EL'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'rating'>('rating');
+  const [markOperational, setMarkOperational] = useState(true);
+  const [assigningWorkshopBikeId, setAssigningWorkshopBikeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
@@ -130,6 +132,11 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     e.preventDefault();
     if (!newLog.bikeId) return;
     onAddMaintenance(newLog);
+    
+    if (markOperational) {
+      setBikes(prev => prev.map(b => b.id === newLog.bikeId ? { ...b, status: 'active', assignedWorkshopId: undefined } : b));
+    }
+    
     setShowLogForm(false);
     setNewLog({ 
       bikeId: '',
@@ -177,6 +184,11 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
       specialization: [],
       rating: 5
     });
+  };
+
+  const handleAssignWorkshop = (bikeId: string, workshopId: string) => {
+    setBikes(prev => prev.map(b => b.id === bikeId ? { ...b, assignedWorkshopId: workshopId === 'none' ? undefined : workshopId } : b));
+    setAssigningWorkshopBikeId(null);
   };
 
   const selectedBike = (bikes || []).find(b => b.id === selectedBikeId);
@@ -252,9 +264,19 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                            <div>
                               <h4 className="font-black text-gray-800 uppercase tracking-tight">{bike.licenseNumber}</h4>
                               <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
-                              {assignedWorkshop && (
-                                <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-1">Dispatched To: {assignedWorkshop.name}</p>
-                              )}
+                              <div className="mt-1 flex items-center space-x-2">
+                                {assignedWorkshop ? (
+                                  <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Dispatched To: {assignedWorkshop.name}</p>
+                                ) : (
+                                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest italic">Pending Assignment</p>
+                                )}
+                                <button 
+                                  onClick={() => setAssigningWorkshopBikeId(bike.id)}
+                                  className="text-[8px] font-black text-blue-500 hover:underline uppercase"
+                                >
+                                  {assignedWorkshop ? 'Modify' : 'Assign Workshop'}
+                                </button>
+                              </div>
                            </div>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -566,6 +588,43 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
         </div>
       </div>
 
+      {/* Workshop Assignment Modal */}
+      {assigningWorkshopBikeId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-8 md:p-10 animate-in zoom-in duration-200">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Assign Workshop</h3>
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Select Service Partner</p>
+                </div>
+                <button onClick={() => setAssigningWorkshopBikeId(null)} className="text-3xl text-gray-300 hover:text-gray-600">&times;</button>
+              </div>
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
+                 {workshops.filter(w => {
+                    const bike = bikes.find(b => b.id === assigningWorkshopBikeId);
+                    return bike ? w.city === bike.city : true;
+                 }).map(w => (
+                   <button 
+                    key={w.id} 
+                    onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, w.id)}
+                    className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 hover:bg-amber-50 hover:border-amber-200 transition-all text-left group"
+                   >
+                     <div className="flex items-center space-x-4">
+                       <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-lg">🛠️</div>
+                       <div>
+                         <span className="font-bold text-gray-800 block uppercase text-xs">{w.name}</span>
+                         <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">{w.specialization[0]}</span>
+                       </div>
+                     </div>
+                     <span className="text-amber-500 font-black text-[10px]">★{w.rating}</span>
+                   </button>
+                 ))}
+                 <button onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, 'none')} className="w-full p-4 rounded-2xl border border-dashed border-gray-200 text-gray-400 font-bold hover:bg-gray-50 uppercase text-[10px] tracking-widest mt-4">In-House / Other</button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Robust Workshop Registration Modal */}
       {showWorkshopForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -743,6 +802,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <input 
+                  type="checkbox" 
+                  id="markActive" 
+                  checked={markOperational} 
+                  onChange={e => setMarkOperational(e.target.checked)}
+                  className="w-5 h-5 rounded accent-blue-600"
+                />
+                <label htmlFor="markActive" className="text-xs font-black text-blue-800 uppercase tracking-widest cursor-pointer">Mark asset as operational after logging</label>
               </div>
 
               <div>
