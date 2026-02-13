@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AutomatedNotification, Driver, Bike } from '../types';
 
 interface NotificationCenterProps {
@@ -19,6 +19,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onClearNotifications,
   isSyncing 
 }) => {
+  // Only display notifications for active drivers
+  const activeNotifications = useMemo(() => {
+    return notifications.filter(notif => {
+      const driver = drivers.find(d => d.id === notif.recipientId);
+      return driver && !driver.isArchived;
+    });
+  }, [notifications, drivers]);
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
@@ -52,11 +60,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Queue Status</p>
-          <h4 className="text-2xl font-black text-gray-800">{notifications.filter(n => n.status === 'queued').length} Pending</h4>
+          <h4 className="text-2xl font-black text-gray-800">{activeNotifications.filter(n => n.status === 'queued').length} Pending</h4>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Delivery Success</p>
-          <h4 className="text-2xl font-black text-green-600">{notifications.filter(n => n.status === 'sent').length} Dispatched</h4>
+          <h4 className="text-2xl font-black text-green-600">{activeNotifications.filter(n => n.status === 'sent').length} Dispatched</h4>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Sync</p>
@@ -67,13 +75,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
           <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Automation Audit Log</h3>
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Showing last {notifications.length} events</span>
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Showing last {activeNotifications.length} active events</span>
         </div>
         <div className="divide-y divide-gray-50">
-          {notifications.length === 0 ? (
+          {activeNotifications.length === 0 ? (
             <div className="py-24 text-center">
                <div className="text-4xl mb-4 text-gray-200">📡</div>
-               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No communication logs recorded.</p>
+               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No active communication logs recorded.</p>
                <button 
                 onClick={onTriggerAutomations}
                 className="mt-4 text-blue-500 font-black text-[9px] uppercase tracking-widest hover:underline"
@@ -82,7 +90,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                </button>
             </div>
           ) : (
-            notifications.map(notif => {
+            activeNotifications.map(notif => {
               const driver = drivers.find(d => d.id === notif.recipientId);
               return (
                 <div key={notif.id} className="p-6 md:p-8 flex items-center justify-between hover:bg-gray-50/50 transition-colors">

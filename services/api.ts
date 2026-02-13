@@ -111,7 +111,10 @@ export class MotoFleetCloud {
     const { drivers = [], payments = [], weeklyTarget } = data;
     const notifications: any[] = [];
     
-    drivers.forEach((d: any) => {
+    // Filter out drivers who are no longer working
+    const activeDrivers = drivers.filter((d: any) => !d.isArchived);
+    
+    activeDrivers.forEach((d: any) => {
        const totalPaid = payments
          .filter((p: any) => p?.driverId === d.id)
          .reduce((acc: number, p: any) => acc + (p?.amount || 0), 0);
