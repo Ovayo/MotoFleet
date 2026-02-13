@@ -22,25 +22,28 @@ const App: React.FC = () => {
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
-  // 1. Multi-Tenancy State with Legacy Fallback
+  // 1. Auth State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
   });
 
+  // 2. Fleet Identification
   const [fleetId, setFleetId] = useState<string | null>(() => {
     const saved = localStorage.getItem('active_fleet_id');
-    // If user is authenticated but has no fleet ID, default to fleet_001 to recover legacy data
+    // Default to fleet_001 for legacy users who are logged in but lost their fleet pointer
     if (!saved && isAdminAuthenticated) return 'fleet_001';
     return saved;
   });
   
   const [fleetName, setFleetName] = useState<string>(() => localStorage.getItem('active_fleet_name') || 'Main Fleet');
+  
+  // 3. Hydration Logic (CRITICAL: Prevents data wipe on load)
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
-  // 2. Cloud Hosting Abstraction
   const cloud = useMemo(() => new MotoFleetCloud(fleetId || 'default'), [fleetId]);
 
-  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(
     isDedicatedDriverMode ? 'driver-profile' : 
     isDedicatedMechanicMode ? 'mechanic-portal' : 'dashboard'
@@ -64,47 +67,61 @@ const App: React.FC = () => {
 
   // Initial Boot & Data Hydration
   useEffect(() => {
+    let isSubscribed = true;
     const hydrate = async () => {
-      // If we don't have a fleet ID yet (and not in dedicated driver mode), we can't hydrate
+      // If we don't have a fleet ID yet, we just show the login screen
       if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode) {
         setLoading(false);
+        setIsHydrated(false);
         return;
       }
       
+      setLoading(true);
+      setIsHydrated(false);
       setIsCloudSyncing(true);
-      const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
-        cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
-        cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
-        cloud.fetch<Payment[]>('payments', INITIAL_PAYMENTS),
-        cloud.fetch<MaintenanceRecord[]>('maintenance', []),
-        cloud.fetch<TrafficFine[]>('fines', []),
-        cloud.fetch<Workshop[]>('workshops', INITIAL_WORKSHOPS),
-        cloud.fetch<AutomatedNotification[]>('notifications', [])
-      ]);
 
-      setBikes(cBikes);
-      setDrivers(cDrivers);
-      setPayments(cPayments);
-      setMaintenance(cMaint);
-      setFines(cFines);
-      setWorkshops(cWorkshops);
-      setNotifications(cNotifs);
-      
-      setIsCloudSyncing(false);
-      setLoading(false);
+      try {
+        const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
+          cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
+          cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
+          cloud.fetch<Payment[]>('payments', INITIAL_PAYMENTS),
+          cloud.fetch<MaintenanceRecord[]>('maintenance', []),
+          cloud.fetch<TrafficFine[]>('fines', []),
+          cloud.fetch<Workshop[]>('workshops', INITIAL_WORKSHOPS),
+          cloud.fetch<AutomatedNotification[]>('notifications', [])
+        ]);
+
+        if (isSubscribed) {
+          setBikes(cBikes);
+          setDrivers(cDrivers);
+          setPayments(cPayments);
+          setMaintenance(cMaint);
+          setFines(cFines);
+          setWorkshops(cWorkshops);
+          setNotifications(cNotifs);
+          
+          setIsHydrated(true); // Now safe to persist changes
+          setLoading(false);
+          setIsCloudSyncing(false);
+        }
+      } catch (err) {
+        console.error("Hydration failed:", err);
+        setLoading(false);
+      }
     };
 
     hydrate();
-  }, [fleetId, cloud]);
+    return () => { isSubscribed = false; };
+  }, [fleetId, cloud, isDedicatedDriverMode, isDedicatedMechanicMode]);
 
-  // Persistence triggers
-  useEffect(() => { if (!loading && fleetId) cloud.persist('bikes', bikes); }, [bikes, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('drivers', drivers); }, [drivers, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('payments', payments); }, [payments, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('fines', fines); }, [fines, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('workshops', workshops); }, [workshops, loading, cloud]);
-  useEffect(() => { if (!loading && fleetId) cloud.persist('notifications', notifications); }, [notifications, loading, cloud]);
+  // Persistence triggers - ONLY fire if isHydrated is TRUE
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('bikes', bikes); }, [bikes, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('drivers', drivers); }, [drivers, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('payments', payments); }, [payments, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('fines', fines); }, [fines, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('workshops', workshops); }, [workshops, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('notifications', notifications); }, [notifications, isHydrated, fleetId, cloud]);
 
   const WEEKLY_TARGET = 650;
 
@@ -189,6 +206,7 @@ const App: React.FC = () => {
     localStorage.removeItem('active_fleet_id');
     localStorage.removeItem('active_fleet_name');
     setFleetId(null);
+    setIsHydrated(false);
     if (isDedicatedDriverMode) {
       setRole('driver');
     } else if (isDedicatedMechanicMode) {
@@ -200,7 +218,6 @@ const App: React.FC = () => {
   };
 
   const renderView = () => {
-    // 1. Mechanic Hub
     if (role === 'mechanic') {
       return (
         <MechanicPortal 
@@ -216,16 +233,12 @@ const App: React.FC = () => {
       );
     }
 
-    // 2. Admin Authentication Gate
     if (!isAdminAuthenticated && !isDedicatedDriverMode) {
       return <AdminLogin onLogin={handleAdminLogin} />;
     }
 
-    // 3. Driver Profile View (Admin Bypass Logic)
     if (role === 'driver') {
-      // If Admin is logged in, use the first driver as a "Simulation" if nobody is logged in
-      const activeDriver = loggedDriver || (isAdminAuthenticated ? drivers[0] : null);
-      
+      const activeDriver = loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
       if (activeDriver) {
         return (
           <DriverProfile 
@@ -241,12 +254,9 @@ const App: React.FC = () => {
           />
         );
       }
-      
-      // Only show Driver Login if NOT an admin and NOT logged in
       return <DriverLogin onLogin={handleDriverLogin} />;
     }
 
-    // 4. Admin Management Views
     switch (view) {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;

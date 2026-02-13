@@ -1,8 +1,7 @@
 
 /**
  * Cloud Intelligence & Data Persistence Service
- * This layer abstracts the underlying storage (LocalStorage for now, Cloud later)
- * to support Multi-Tenancy and Automated Logistics.
+ * This layer abstracts the underlying storage to support Multi-Tenancy.
  */
 
 const CLOUD_LATENCY = 800;
@@ -14,39 +13,54 @@ export class MotoFleetCloud {
     this.fleetId = fleetId;
   }
 
-  private getStorageKey(key: string): string {
-    return `fleet_${this.fleetId}_${key}`;
+  /**
+   * The canonical key for v2 multi-tenancy
+   */
+  private getSiloKey(key: string): string {
+    return `mf_v2_${this.fleetId}_${key}`;
   }
 
   /**
-   * Migrates data from the "Single Fleet" version (non-prefixed keys)
-   * to the new Multi-Tenant Silo.
+   * Scans browser local storage for any legacy data formats to prevent data loss
    */
-  private async migrateLegacy(key: string): Promise<string | null> {
-    const legacyData = localStorage.getItem(key);
-    if (legacyData && this.fleetId === 'fleet_001') {
-      console.log(`[Migration] Moving legacy data for ${key} to fleet_001 silo...`);
-      localStorage.setItem(this.getStorageKey(key), legacyData);
-      // We keep the legacy data for one session just in case, 
-      // but in a real app we might delete it here: localStorage.removeItem(key);
-      return legacyData;
+  private findLegacyData(key: string): string | null {
+    const legacyPatterns = [
+      `fleet_${this.fleetId}_${key}`,  // Potential double-prefix bug from early v2
+      `${this.fleetId}_${key}`,        // v1 multi-tenant format
+      key                              // Original single-fleet format
+    ];
+
+    for (const lKey of legacyPatterns) {
+      const data = localStorage.getItem(lKey);
+      if (data && data !== '[]' && data !== '{}') {
+        console.log(`[Cloud Sync] Legacy data discovered in "${lKey}". Recovering to silo...`);
+        return data;
+      }
     }
     return null;
   }
 
   async fetch<T>(key: string, defaultValue: T): Promise<T> {
-    return new Promise(async (resolve) => {
-      // 1. Try to get from the specific fleet silo
-      const siloKey = this.getStorageKey(key);
+    return new Promise((resolve) => {
+      const siloKey = this.getSiloKey(key);
       let saved = localStorage.getItem(siloKey);
 
-      // 2. If not found in silo, check if there is legacy data to migrate (only for fleet_001)
-      if (!saved) {
-        saved = await this.migrateLegacy(key);
+      // If nothing in the main silo, try to find and migrate legacy data
+      if (!saved || saved === '[]') {
+        const legacy = this.findLegacyData(key);
+        if (legacy) {
+          localStorage.setItem(siloKey, legacy);
+          saved = legacy;
+        }
       }
 
       setTimeout(() => {
-        resolve(saved ? JSON.parse(saved) : defaultValue);
+        try {
+          resolve(saved ? JSON.parse(saved) : defaultValue);
+        } catch (e) {
+          console.error("Parse error for key:", siloKey);
+          resolve(defaultValue);
+        }
       }, CLOUD_LATENCY);
     });
   }
@@ -54,21 +68,19 @@ export class MotoFleetCloud {
   async persist<T>(key: string, data: T): Promise<void> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        localStorage.setItem(this.getStorageKey(key), JSON.stringify(data));
+        localStorage.setItem(this.getSiloKey(key), JSON.stringify(data));
         resolve();
-      }, CLOUD_LATENCY / 2);
+      }, 100); // Fast local persistence
     });
   }
 
   /**
    * Automated Notification Engine Simulation
-   * Checks for arrears and maintenance needs
    */
   async triggerAutomationCheck(data: any): Promise<any[]> {
     const { drivers, payments, weeklyTarget } = data;
     const notifications: any[] = [];
     
-    // Logic for finding arrears
     drivers.forEach((d: any) => {
        const totalPaid = payments
          .filter((p: any) => p.driverId === d.id)
@@ -81,7 +93,7 @@ export class MotoFleetCloud {
            recipientId: d.id,
            status: 'queued',
            timestamp: new Date().toISOString(),
-           message: `Automated System Alert: ${d.name}, your account is in arrears of R${weeklyTarget - totalPaid}.`
+           message: `Automated Alert: Operator ${d.name}, account balance check required. Current weekly collection target is R${weeklyTarget}.`
          });
        }
     });
