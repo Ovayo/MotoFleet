@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS, INITIAL_WORKSHOPS } from './data';
-import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop } from './types';
+import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop, AutomatedNotification } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import FleetManagement from './components/FleetManagement';
@@ -14,21 +14,21 @@ import AdminLogin from './components/AdminLogin';
 import MechanicPortal from './components/MechanicPortal';
 import TrafficFines from './components/TrafficFines';
 import LoadingScreen from './components/LoadingScreen';
-
-const STORAGE_KEYS = {
-  BIKES: 'motofleet_bikes_v3',
-  DRIVERS: 'motofleet_drivers_v3',
-  PAYMENTS: 'motofleet_payments_v3',
-  MAINTENANCE: 'motofleet_maintenance_v3',
-  FINES: 'motofleet_fines_v3',
-  WORKSHOPS: 'motofleet_workshops_v3',
-  AUTH: 'motofleet_admin_auth_v1'
-};
+import NotificationCenter from './components/NotificationCenter';
+import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
   const params = new URLSearchParams(window.location.search);
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
+
+  // 1. Multi-Tenancy: State for the current active fleet
+  const [fleetId, setFleetId] = useState<string | null>(() => localStorage.getItem('active_fleet_id'));
+  const [fleetName, setFleetName] = useState<string>(() => localStorage.getItem('active_fleet_name') || 'Main Fleet');
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+
+  // 2. Cloud Hosting Abstraction
+  const cloud = useMemo(() => new MotoFleetCloud(fleetId || 'default'), [fleetId]);
 
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(
@@ -43,76 +43,70 @@ const App: React.FC = () => {
 
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
+    return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
   });
   
-  const [bikes, setBikes] = useState<Bike[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BIKES);
-    return saved ? JSON.parse(saved) : INITIAL_BIKES;
-  });
+  // Data State (Loaded from Simulated Cloud)
+  const [bikes, setBikes] = useState<Bike[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
+  const [fines, setFines] = useState<TrafficFine[]>([]);
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
 
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DRIVERS);
-    return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
-  });
-
-  const [payments, setPayments] = useState<Payment[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PAYMENTS);
-    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
-  });
-
-  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.MAINTENANCE);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [fines, setFines] = useState<TrafficFine[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.FINES);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [workshops, setWorkshops] = useState<Workshop[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.WORKSHOPS);
-    return saved ? JSON.parse(saved) : INITIAL_WORKSHOPS;
-  });
-
+  // Initial Boot & Data Hydration from "Cloud"
   useEffect(() => {
-    // Initial boot sequence
-    const timer = setTimeout(() => {
+    const hydrate = async () => {
+      if (!fleetId && isAdminAuthenticated) {
+        setLoading(false);
+        return;
+      }
+      
+      setIsCloudSyncing(true);
+      const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
+        cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
+        cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
+        cloud.fetch<Payment[]>('payments', INITIAL_PAYMENTS),
+        cloud.fetch<MaintenanceRecord[]>('maintenance', []),
+        cloud.fetch<TrafficFine[]>('fines', []),
+        cloud.fetch<Workshop[]>('workshops', INITIAL_WORKSHOPS),
+        cloud.fetch<AutomatedNotification[]>('notifications', [])
+      ]);
+
+      setBikes(cBikes);
+      setDrivers(cDrivers);
+      setPayments(cPayments);
+      setMaintenance(cMaint);
+      setFines(cFines);
+      setWorkshops(cWorkshops);
+      setNotifications(cNotifs);
+      
+      setIsCloudSyncing(false);
       setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    };
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
-  }, [bikes]);
+    hydrate();
+  }, [fleetId, cloud]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(drivers));
-  }, [drivers]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MAINTENANCE, JSON.stringify(maintenance));
-  }, [maintenance]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FINES, JSON.stringify(fines));
-  }, [fines]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(workshops));
-  }, [workshops]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.AUTH, isAdminAuthenticated ? 'true' : 'false');
-  }, [isAdminAuthenticated]);
+  // Sync back to "Cloud" whenever state changes
+  useEffect(() => { if (!loading) cloud.persist('bikes', bikes); }, [bikes, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('drivers', drivers); }, [drivers, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('payments', payments); }, [payments, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('maintenance', maintenance); }, [maintenance, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('fines', fines); }, [fines, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('workshops', workshops); }, [workshops, loading, cloud]);
+  useEffect(() => { if (!loading) cloud.persist('notifications', notifications); }, [notifications, loading, cloud]);
 
   const WEEKLY_TARGET = 650;
+
+  // 3. Automated Notifications Trigger
+  const triggerAutomations = async () => {
+    setIsCloudSyncing(true);
+    const newNotifs = await cloud.triggerAutomationCheck({ drivers, payments, weeklyTarget: WEEKLY_TARGET });
+    setNotifications(prev => [...newNotifs, ...prev].slice(0, 100));
+    setIsCloudSyncing(false);
+  };
 
   const handleAddPayment = (payment: Omit<Payment, 'id'>) => {
     setPayments(prev => [...prev, { ...payment, id: `p-${Date.now()}` }]);
@@ -148,20 +142,6 @@ const App: React.FC = () => {
     setFines(prev => prev.map(f => f.id === id ? { ...f, status } : f));
   };
 
-  const handleAddWorkshop = (workshop: Omit<Workshop, 'id'>) => {
-    setWorkshops(prev => [...prev, { ...workshop, id: `w-${Date.now()}` }]);
-  };
-
-  const handleUpdateWorkshop = (id: string, updatedWorkshop: Omit<Workshop, 'id'>) => {
-    setWorkshops(prev => prev.map(w => w.id === id ? { ...updatedWorkshop, id } : w));
-  };
-
-  const handleDeleteWorkshop = (id: string) => {
-    if (window.confirm('Are you sure you want to remove this partner workshop?')) {
-      setWorkshops(prev => prev.filter(w => w.id !== id));
-    }
-  };
-
   const handleUpdateDriver = (updatedDriver: Driver) => {
     setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
     if (loggedDriver && loggedDriver.id === updatedDriver.id) {
@@ -181,8 +161,14 @@ const App: React.FC = () => {
     return false;
   };
 
-  const handleAdminLogin = (passcode: string) => {
+  const handleAdminLogin = (passcode: string, fId: string, fName?: string) => {
     if (passcode === 'admin123') {
+      const finalName = fName || `Fleet ${fId.toUpperCase()}`;
+      setFleetId(fId);
+      setFleetName(finalName);
+      localStorage.setItem('active_fleet_id', fId);
+      localStorage.setItem('active_fleet_name', finalName);
+      localStorage.setItem('motofleet_admin_auth_v1', 'true');
       setIsAdminAuthenticated(true);
       return true;
     }
@@ -192,6 +178,10 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setLoggedDriver(null);
     setIsAdminAuthenticated(false);
+    localStorage.removeItem('motofleet_admin_auth_v1');
+    localStorage.removeItem('active_fleet_id');
+    localStorage.removeItem('active_fleet_name');
+    setFleetId(null);
     if (isDedicatedDriverMode) {
       setRole('driver');
     } else if (isDedicatedMechanicMode) {
@@ -226,24 +216,21 @@ const App: React.FC = () => {
           maintenance={maintenance} 
           onAddMaintenance={handleAddMaintenance} 
           workshops={workshops}
-          onAddWorkshop={handleAddWorkshop}
-          onUpdateWorkshop={handleUpdateWorkshop}
-          onDeleteWorkshop={handleDeleteWorkshop}
+          onAddWorkshop={() => {}}
+          onUpdateWorkshop={() => {}}
+          onDeleteWorkshop={() => {}}
         />
       );
     }
 
-    // Role is Admin or switching through portals. Check for authentication first.
     if (!isAdminAuthenticated) {
       return <AdminLogin onLogin={handleAdminLogin} />;
     }
 
-    // If role is driver but not logged in as specific driver (impersonation/portal view)
     if (role === 'driver' && !loggedDriver) {
       return <DriverLogin onLogin={handleDriverLogin} />;
     }
 
-    // Role is Admin and Authenticated
     switch (view) {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
@@ -266,15 +253,13 @@ const App: React.FC = () => {
         return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} onUpdateMaintenance={handleUpdateMaintenance} onDeleteMaintenance={handleDeleteMaintenance} workshops={workshops} />;
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
+      case 'communications':
+        return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} isSyncing={isCloudSyncing} />;
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
   };
 
-  // The sidebar should be shown if:
-  // 1. The user is an authenticated administrator (even if viewing other roles)
-  // 2. A mechanic is logged in
-  // 3. A driver is successfully logged in
   const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && loggedDriver);
 
   if (loading) {
@@ -294,9 +279,6 @@ const App: React.FC = () => {
             setRole(newRole);
             if (newRole === 'admin') setView('dashboard');
             if (newRole === 'mechanic') setView('mechanic-portal');
-            if (newRole === 'driver') {
-              // Note: role switched to driver. renderView handles showing login or profile.
-            }
           }}
         />
       )}
@@ -310,12 +292,14 @@ const App: React.FC = () => {
                   {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `My Portfolio`}
                 </h1>
                 {isAdminAuthenticated && (
-                  <button 
-                    onClick={() => { setRole('admin'); setView('dashboard'); }}
-                    className="hidden sm:inline-block text-[8px] md:text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100 hover:bg-blue-600 hover:text-white transition-all"
-                  >
-                    Admin Terminal
-                  </button>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
+                      {fleetName}
+                    </span>
+                    {isCloudSyncing && (
+                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    )}
+                  </div>
                 )}
               </div>
               <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">

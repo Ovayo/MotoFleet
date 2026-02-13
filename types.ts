@@ -75,4 +75,19 @@ export interface Workshop {
   rating: number;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines';
+export interface AutomatedNotification {
+  id: string;
+  type: 'arrears' | 'maintenance' | 'license';
+  recipientId: string;
+  status: 'queued' | 'sent' | 'failed';
+  timestamp: string;
+  message: string;
+}
+
+export interface FleetContext {
+  fleetId: string;
+  fleetName: string;
+  isCloudSyncing: boolean;
+}
+
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications';
