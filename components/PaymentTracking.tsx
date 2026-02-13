@@ -40,11 +40,21 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
 
   const [newPayment, setNewPayment] = useState({
     driverId: activeDrivers[0]?.id || '',
-    amount: 650,
+    amount: activeDrivers[0]?.weeklyTarget || weeklyTarget,
     date: new Date().toISOString().split('T')[0],
     weekNumber: 1,
     type: 'rental' as const
   });
+
+  // Automatically update the amount when the driver is changed in the form
+  const handleDriverChangeInForm = (driverId: string) => {
+    const driver = activeDrivers.find(d => d.id === driverId);
+    setNewPayment(prev => ({
+      ...prev,
+      driverId,
+      amount: driver?.weeklyTarget || weeklyTarget
+    }));
+  };
 
   const weeksInMonth = useMemo(() => {
     const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
@@ -52,10 +62,9 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     return days > 28 ? 5 : 4;
   }, [selectedMonth, selectedYear]);
 
-  // Fix: Added missing calendarDays calculation for the calendar view
   const calendarDays = useMemo(() => {
     const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
-    const padding = firstDay === 0 ? 6 : firstDay - 1; // Assuming week starts on Monday
+    const padding = firstDay === 0 ? 6 : firstDay - 1;
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     const daysInPrevMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     
@@ -215,7 +224,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
         <div>
           <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Payment Ledger</h2>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            {months[selectedMonth]} {selectedYear} • Based on Individual Targets
+            {months[selectedMonth]} {selectedYear} • Managed by Fleet Logistics
           </p>
         </div>
         
@@ -238,22 +247,27 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Operator</label>
-              <select className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" value={newPayment.driverId} onChange={e => setNewPayment({...newPayment, driverId: e.target.value})}>
+              <select 
+                className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                value={newPayment.driverId} 
+                onChange={e => handleDriverChangeInForm(e.target.value)}
+              >
                 {activeDrivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Amount (R)</label>
-              <input type="number" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: Number(e.target.value)})} />
+              <input type="number" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: Number(e.target.value)})} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date</label>
-              <input type="date" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} />
+              <input type="date" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} />
             </div>
             <div className="flex items-end">
-              <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest">Post Entry</button>
+              <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Post Entry</button>
             </div>
           </div>
+          <p className="mt-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Note: Amount defaults to the selected operator's individual target.</p>
         </form>
       )}
 
@@ -262,11 +276,11 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50/50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-widest">
               <tr>
-                <th className="px-8 py-5 sticky left-0 bg-gray-50/50 z-10">Operator</th>
-                {[...Array(weeksInMonth)].map((_, i) => <th key={i} className="px-4 py-5 text-center">W{i + 1}</th>)}
+                <th className="px-8 py-5 sticky left-0 bg-gray-50/50 z-10">Operator Hub</th>
+                {[...Array(weeksInMonth)].map((_, i) => <th key={i} className="px-4 py-5 text-center">Week {i + 1}</th>)}
                 <th className="px-8 py-5 text-right">Settled</th>
                 <th className="px-8 py-5 text-right">Balance</th>
-                <th className="px-8 py-5 text-center">Target</th>
+                <th className="px-8 py-5 text-center bg-gray-100/30">Set Target</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -284,12 +298,13 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                     <td className="px-8 py-6 sticky left-0 bg-white group-hover:bg-gray-50/50 transition-colors">
                       <div className="font-black text-gray-800 whitespace-nowrap uppercase tracking-tight leading-tight">{driver.name}</div>
                       <div className={`text-[8px] uppercase font-bold tracking-widest mt-1 ${monthlyBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {monthlyBalance >= 0 ? 'Healthy Standing' : 'Arrears Active'}
+                        {monthlyBalance >= 0 ? 'Account Health: Positive' : 'Account Health: Arrears'}
                       </div>
                     </td>
                     
                     {weeklyPaidSums.map((amount, i) => {
                       const isEditing = editingCell?.driverId === driver.id && editingCell?.weekIndex === i;
+                      const isFullyPaid = amount >= currentTarget;
                       return (
                         <td key={i} className="px-4 py-6 text-center">
                           {isEditing ? (
@@ -297,7 +312,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                           ) : (
                             <button 
                               onClick={() => handleCellClick(driver.id, i, amount)}
-                              className={`inline-block px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter min-w-[65px] transition-all ${amount >= currentTarget ? 'bg-green-100 text-green-700 hover:bg-green-200' : amount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-300 hover:bg-blue-600 hover:text-white'}`}
+                              className={`inline-block px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter min-w-[70px] transition-all ${isFullyPaid ? 'bg-green-100 text-green-700 hover:bg-green-200' : amount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-300 hover:bg-blue-600 hover:text-white'}`}
                             >
                               {amount > 0 ? `R${amount}` : '+ Pay'}
                             </button>
@@ -306,11 +321,15 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                       );
                     })}
 
-                    <td className="px-8 py-6 text-[11px] font-black text-gray-800 text-right">R{monthlyTotal}</td>
+                    <td className="px-8 py-6 text-[11px] font-black text-gray-800 text-right">R{monthlyTotal.toLocaleString()}</td>
                     <td className={`px-8 py-6 text-[11px] font-black text-right ${monthlyBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {monthlyBalance >= 0 ? `+R${monthlyBalance}` : `R${monthlyBalance}`}
                     </td>
-                    <td className="px-8 py-6 text-center text-[10px] font-bold text-gray-400">R{currentTarget}</td>
+                    <td className="px-8 py-6 text-center bg-gray-50/30">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black border ${currentTarget === 600 ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                        R{currentTarget}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
