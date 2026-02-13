@@ -4,7 +4,7 @@
  * This layer abstracts the underlying storage to support Multi-Tenancy.
  */
 
-const CLOUD_LATENCY = 600;
+const CLOUD_LATENCY = 400;
 
 export class MotoFleetCloud {
   private fleetId: string;
@@ -21,30 +21,31 @@ export class MotoFleetCloud {
   }
 
   /**
-   * Exhaustive scan of browser local storage for any legacy data formats to prevent data loss.
-   * Checks multiple common prefixes used in previous versions of the application.
+   * BRUTE FORCE SCANNER: 
+   * Searches for ANY key in localStorage that might contain user data.
    */
-  private findLegacyData(key: string): string | null {
-    const legacyPatterns = [
-      `mf_v2_${this.fleetId}_${key}`,     // Self-check
-      `motofleet_${key}`,                // v1 Global prefix
-      `fleet_${this.fleetId}_${key}`,    // Early v2 prefix
-      `${this.fleetId}_${key}`,          // Simple tenant prefix
-      key                                // No prefix (Legacy raw)
-    ];
+  private findLegacyDataBruteForce(targetKey: string): string | null {
+    const keys = Object.keys(localStorage);
+    
+    // 1. Try exact matches first with common prefixes
+    const prefixes = [`mf_v2_${this.fleetId}_`, `motofleet_`, `fleet_${this.fleetId}_`, ''];
+    for (const prefix of prefixes) {
+      const data = localStorage.getItem(`${prefix}${targetKey}`);
+      if (data && data !== '[]' && data !== '{}' && data !== 'null') return data;
+    }
 
-    for (const lKey of legacyPatterns) {
-      try {
-        const data = localStorage.getItem(lKey);
-        // We only migrate if the data is a non-empty array or non-empty object
-        if (data && data !== '[]' && data !== '{}' && data !== 'null' && data !== 'undefined') {
-          console.log(`[Deep Recovery] Found legacy data in "${lKey}". Migrating to silo mf_v2_${this.fleetId}...`);
+    // 2. Brute force search: Find ANY key that ends with or contains the targetKey
+    // This catches keys like "maintenance-backup", "old_fines", etc.
+    for (const storageKey of keys) {
+      if (storageKey.toLowerCase().includes(targetKey.toLowerCase())) {
+        const data = localStorage.getItem(storageKey);
+        if (data && data !== '[]' && data !== '{}' && data !== 'null') {
+          console.log(`[Recovery Engine] Brute-force match found: "${storageKey}" -> Migrating to silo...`);
           return data;
         }
-      } catch (e) {
-        console.warn(`[Deep Recovery] Error reading legacy key ${lKey}:`, e);
       }
     }
+
     return null;
   }
 
@@ -53,13 +54,13 @@ export class MotoFleetCloud {
       const siloKey = this.getSiloKey(key);
       let saved = localStorage.getItem(siloKey);
 
-      // CRITICAL: Check if we have data in the new silo. 
-      // If not, or if it's an empty "bot" state, look for legacy data to migrate.
+      // If Silo is empty, initiate Brute Force Recovery
       if (!saved || saved === '[]' || saved === 'null') {
-        const legacy = this.findLegacyData(key);
-        if (legacy) {
-          localStorage.setItem(siloKey, legacy);
-          saved = legacy;
+        const recovered = this.findLegacyDataBruteForce(key);
+        if (recovered) {
+          // Immediately secure the recovered data in the new Silo
+          localStorage.setItem(siloKey, recovered);
+          saved = recovered;
         }
       }
 
@@ -70,9 +71,10 @@ export class MotoFleetCloud {
             return;
           }
           const parsed = JSON.parse(saved);
-          resolve(parsed as T);
+          // Return the array, ensuring it's not null
+          resolve((parsed || defaultValue) as T);
         } catch (e) {
-          console.error(`[Cloud Sync] Parse error for key: ${siloKey}`, e);
+          console.error(`[Cloud Sync] Critical recovery error for ${key}:`, e);
           resolve(defaultValue);
         }
       }, CLOUD_LATENCY);
@@ -80,36 +82,36 @@ export class MotoFleetCloud {
   }
 
   async persist<T>(key: string, data: T): Promise<void> {
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-       // Optional: We could check if we are overwriting actual data with nothing, 
-       // but the App.tsx 'isHydrated' guard handles this more cleanly.
+    // SECURITY: Prevent overwriting a non-empty storage with an empty array
+    // during the critical hydration phase.
+    if (Array.isArray(data) && data.length === 0) {
+      const existing = localStorage.getItem(this.getSiloKey(key));
+      if (existing && existing !== '[]' && existing !== 'null') {
+        console.warn(`[Persistence Guard] Blocked empty save to protect existing "${key}" data.`);
+        return;
+      }
     }
-    
+
     return new Promise((resolve) => {
       setTimeout(() => {
         try {
           localStorage.setItem(this.getSiloKey(key), JSON.stringify(data));
         } catch (e) {
-          console.error(`[Cloud Sync] Persistence failed for key: ${key}`, e);
+          console.error(`[Cloud Sync] Persistence failed:`, e);
         }
         resolve();
-      }, 50); // Fast local persistence
+      }, 50);
     });
   }
 
-  /**
-   * Automated Notification Engine Simulation
-   */
   async triggerAutomationCheck(data: any): Promise<any[]> {
-    const { drivers, payments, weeklyTarget } = data;
+    const { drivers = [], payments = [], weeklyTarget } = data;
     const notifications: any[] = [];
     
-    if (!drivers || !payments) return [];
-
     drivers.forEach((d: any) => {
        const totalPaid = payments
-         .filter((p: any) => p.driverId === d.id)
-         .reduce((acc: number, p: any) => acc + p.amount, 0);
+         .filter((p: any) => p?.driverId === d.id)
+         .reduce((acc: number, p: any) => acc + (p?.amount || 0), 0);
        
        if (totalPaid < weeklyTarget) {
          notifications.push({
@@ -118,7 +120,7 @@ export class MotoFleetCloud {
            recipientId: d.id,
            status: 'queued',
            timestamp: new Date().toISOString(),
-           message: `Automated Alert: Operator ${d.name}, account balance check required. Weekly target: R${weeklyTarget}.`
+           message: `Automated Alert: Driver ${d.name}, account balance check required.`
          });
        }
     });

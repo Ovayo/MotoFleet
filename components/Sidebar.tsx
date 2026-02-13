@@ -29,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'maintenance', label: 'Service', icon: '🔧' },
     { id: 'fines', label: 'Fines', icon: '🚔' },
     { id: 'communications', label: 'Comms', icon: '📡' },
+    { id: 'tracking', label: 'Tracking', icon: '📍' },
   ];
 
   const mechanicItems = [

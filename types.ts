@@ -14,6 +14,15 @@ export interface Bike {
   notes?: string;
   licenseDiskExpiry?: string;
   enatisVerified?: boolean;
+  // tracker property added to fix TrackingPortal errors
+  tracker?: {
+    status: 'moving' | 'parked' | 'ignited';
+    lat: number;
+    lng: number;
+    battery: number;
+    signalStrength: string;
+    speed: number;
+  };
 }
 
 export interface Driver {
@@ -90,4 +99,4 @@ export interface FleetContext {
   isCloudSyncing: boolean;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'tracking';

@@ -15,6 +15,7 @@ import MechanicPortal from './components/MechanicPortal';
 import TrafficFines from './components/TrafficFines';
 import LoadingScreen from './components/LoadingScreen';
 import NotificationCenter from './components/NotificationCenter';
+import TrackingPortal from './components/TrackingPortal';
 import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
@@ -22,21 +23,18 @@ const App: React.FC = () => {
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
-  // 1. Authentication & Identity
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
   });
 
   const [fleetId, setFleetId] = useState<string | null>(() => {
     const saved = localStorage.getItem('active_fleet_id');
-    // Default to fleet_001 for legacy admins to trigger recovery
     if (!saved && isAdminAuthenticated) return 'fleet_001';
     return saved;
   });
   
   const [fleetName, setFleetName] = useState<string>(() => localStorage.getItem('active_fleet_name') || 'Main Fleet');
   
-  // 2. Hydration State (CRITICAL: Guard against overwriting existing data)
   const [isHydrated, setIsHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -55,7 +53,6 @@ const App: React.FC = () => {
 
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
   
-  // 3. Data Collections
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -64,11 +61,9 @@ const App: React.FC = () => {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
 
-  // 4. Lifecycle: Data Recovery & Hydration
   useEffect(() => {
     let isSubscribed = true;
     const hydrate = async () => {
-      // If we don't have a fleet ID yet, we must wait for login
       if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode) {
         setLoading(false);
         setIsHydrated(false);
@@ -76,11 +71,9 @@ const App: React.FC = () => {
       }
       
       setLoading(true);
-      setIsHydrated(false);
       setIsCloudSyncing(true);
 
       try {
-        // Parallel fetch for all core assets with Deep Recovery Engine
         const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
           cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
           cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
@@ -100,30 +93,27 @@ const App: React.FC = () => {
           setWorkshops(cWorkshops || []);
           setNotifications(cNotifs || []);
           
-          setIsHydrated(true); // Signal that it is now safe to persist changes
+          setIsHydrated(true); 
           setLoading(false);
           setIsCloudSyncing(false);
         }
       } catch (err) {
-        console.error("[Hydration Error] System halted to prevent data loss:", err);
-        // We do NOT set loading(false) here if it's a critical crash to prevent overwriting
-        // But for UX, we should probably show an error state if this fails repeatedly.
+        console.error("Hydration Critical Error:", err);
         setLoading(false); 
       }
     };
 
     hydrate();
     return () => { isSubscribed = false; };
-  }, [fleetId, cloud, isDedicatedDriverMode, isDedicatedMechanicMode]);
+  }, [fleetId, cloud]);
 
-  // 5. Lifecycle: Persistence (Only triggers AFTER successful hydration)
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('bikes', bikes); }, [bikes, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('drivers', drivers); }, [drivers, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('payments', payments); }, [payments, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('fines', fines); }, [fines, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('workshops', workshops); }, [workshops, isHydrated, fleetId, cloud]);
-  useEffect(() => { if (isHydrated && fleetId) cloud.persist('notifications', notifications); }, [notifications, isHydrated, fleetId, cloud]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('bikes', bikes); }, [bikes, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('drivers', drivers); }, [drivers, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('payments', payments); }, [payments, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('fines', fines); }, [fines, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('workshops', workshops); }, [workshops, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('notifications', notifications); }, [notifications, isHydrated, fleetId]);
 
   const WEEKLY_TARGET = 650;
 
@@ -135,41 +125,41 @@ const App: React.FC = () => {
   };
 
   const handleAddPayment = (payment: Omit<Payment, 'id'>) => {
-    setPayments(prev => [...prev, { ...payment, id: `p-${Date.now()}` }]);
+    setPayments(prev => [...(prev || []), { ...payment, id: `p-${Date.now()}` }]);
   };
 
   const handleUpdatePayment = (id: string, amount: number) => {
-    setPayments(prev => prev.map(p => p.id === id ? { ...p, amount } : p));
+    setPayments(prev => (prev || []).map(p => p.id === id ? { ...p, amount } : p));
   };
 
   const handleDeletePayment = (id: string) => {
-    setPayments(prev => prev.filter(p => p.id !== id));
+    setPayments(prev => (prev || []).filter(p => p.id !== id));
   };
 
   const handleAddMaintenance = (record: Omit<MaintenanceRecord, 'id'>) => {
-    setMaintenance(prev => [...prev, { ...record, id: `m-${Date.now()}` }]);
+    setMaintenance(prev => [...(prev || []), { ...record, id: `m-${Date.now()}` }]);
   };
 
   const handleUpdateMaintenance = (updatedRecord: MaintenanceRecord) => {
-    setMaintenance(prev => prev.map(m => m.id === updatedRecord.id ? updatedRecord : m));
+    setMaintenance(prev => (prev || []).map(m => m.id === updatedRecord.id ? updatedRecord : m));
   };
 
   const handleDeleteMaintenance = (id: string) => {
     if (window.confirm("Confirm deletion of this expense record?")) {
-      setMaintenance(prev => prev.filter(m => m.id !== id));
+      setMaintenance(prev => (prev || []).filter(m => m.id !== id));
     }
   };
 
   const handleAddFine = (fine: Omit<TrafficFine, 'id'>) => {
-    setFines(prev => [...prev, { ...fine, id: `f-${Date.now()}` }]);
+    setFines(prev => [...(prev || []), { ...fine, id: `f-${Date.now()}` }]);
   };
 
   const handleUpdateFineStatus = (id: string, status: TrafficFine['status']) => {
-    setFines(prev => prev.map(f => f.id === id ? { ...f, status } : f));
+    setFines(prev => (prev || []).map(f => f.id === id ? { ...f, status } : f));
   };
 
   const handleUpdateDriver = (updatedDriver: Driver) => {
-    setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
+    setDrivers(prev => (prev || []).map(d => d.id === updatedDriver.id ? updatedDriver : d));
     if (loggedDriver && loggedDriver.id === updatedDriver.id) {
       setLoggedDriver(updatedDriver);
     }
@@ -240,7 +230,7 @@ const App: React.FC = () => {
     }
 
     if (role === 'driver') {
-      const activeDriver = loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
+      const activeDriver = loggedDriver || (isAdminAuthenticated && (drivers?.length || 0) > 0 ? drivers[0] : null);
       if (activeDriver) {
         return (
           <DriverProfile 
@@ -283,6 +273,8 @@ const App: React.FC = () => {
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} isSyncing={isCloudSyncing} />;
+      case 'tracking':
+        return <TrackingPortal bikes={bikes} />;
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
