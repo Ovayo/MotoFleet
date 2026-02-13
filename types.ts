@@ -39,6 +39,8 @@ export interface Driver {
   enatisVerified?: boolean;
   contactVerified?: boolean;
   profilePictureUrl?: string;
+  weeklyTarget?: number; // Custom rental target (e.g. 600 or 650)
+  isArchived?: boolean; // For operators no longer working
 }
 
 export interface Payment {

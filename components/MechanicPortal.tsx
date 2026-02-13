@@ -68,11 +68,19 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   };
 
   const getServiceStatus = (bikeId: string) => {
-    const records = maintenance.filter(m => m.bikeId === bikeId && (m.serviceType === 'routine' || m.serviceType === 'oil'));
+    const records = (maintenance || []).filter(m => m.bikeId === bikeId && (m.serviceType === 'routine' || m.serviceType === 'oil'));
     if (records.length === 0) return { status: 'overdue', days: 999, lastDate: 'Never' };
     
-    const latest = records.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
-    const diff = Math.floor((new Date().getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
+    const latest = records.reduce((a, b) => {
+      const dA = new Date(a.date).getTime();
+      const dB = new Date(b.date).getTime();
+      return dA > dB ? a : b;
+    });
+    
+    const latestTime = new Date(latest.date).getTime();
+    if (isNaN(latestTime)) return { status: 'overdue', days: 999, lastDate: 'Invalid Date' };
+
+    const diff = Math.floor((new Date().getTime() - latestTime) / (1000 * 60 * 60 * 24));
     
     if (diff > 90) return { status: 'overdue', days: diff, lastDate: new Date(latest.date).toLocaleDateString() };
     if (diff > 75) return { status: 'due', days: diff, lastDate: new Date(latest.date).toLocaleDateString() };
@@ -84,6 +92,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     return (maintenance || []).filter(m => {
       if (!m.warrantyMonths) return false;
       const expiryDate = new Date(m.date);
+      if (isNaN(expiryDate.getTime())) return false;
       expiryDate.setMonth(expiryDate.getMonth() + m.warrantyMonths);
       return expiryDate > now;
     }).map(m => {
@@ -95,11 +104,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   }, [maintenance]);
 
   const workshopBikes = (bikes || []).filter(b => b.status === 'maintenance');
+  
   const roadmapBikes = useMemo(() => {
-    return [...(bikes || [])].sort((a, b) => getServiceStatus(b.id).days - getServiceStatus(a.id).days);
+    return [...(bikes || [])].sort((a, b) => {
+      const statusA = getServiceStatus(a.id);
+      const statusB = getServiceStatus(b.id);
+      return (statusB.days || 0) - (statusA.days || 0);
+    });
   }, [bikes, maintenance]);
 
   const getSpecIcon = (spec: string) => {
+    if (!spec) return '🔹';
     const s = spec.toLowerCase();
     if (s.includes('hero')) return '🦸';
     if (s.includes('honda')) return '🇯🇵';
@@ -116,15 +131,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
   const filteredWorkshops = useMemo(() => {
     let result = (workshops || []).filter(w => {
-      const matchesSearch = w.name.toLowerCase().includes(workshopSearch.toLowerCase()) || 
-                           w.specialization.some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
+      const matchesSearch = w.name?.toLowerCase().includes(workshopSearch.toLowerCase()) || 
+                           (w.specialization || []).some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
       const matchesCity = cityFilter === 'all' || w.city === cityFilter;
       return matchesSearch && matchesCity;
     });
 
     return result.sort((a, b) => {
-      if (sortBy === 'rating') return b.rating - a.rating;
-      return a.name.localeCompare(b.name);
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [workshops, workshopSearch, cityFilter, sortBy]);
 
@@ -163,12 +178,12 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   const openEditWorkshop = (workshop: Workshop) => {
     setEditingWorkshopId(workshop.id);
     setWorkshopFormData({
-      name: workshop.name,
-      city: workshop.city,
-      location: workshop.location,
-      contact: workshop.contact,
-      specialization: workshop.specialization,
-      rating: workshop.rating
+      name: workshop.name || '',
+      city: workshop.city || 'JHB',
+      location: workshop.location || '',
+      contact: workshop.contact || '',
+      specialization: workshop.specialization || [],
+      rating: workshop.rating || 5
     });
     setShowWorkshopForm(true);
   };
@@ -391,9 +406,9 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  {filteredWorkshops.map(w => {
-                   const primarySpec = w.specialization[0];
-                   const otherSpecs = w.specialization.slice(1);
-                   const isTopRated = w.rating >= 4.7;
+                   const primarySpec = (w.specialization || [])[0];
+                   const otherSpecs = (w.specialization || []).slice(1);
+                   const isTopRated = (w.rating || 0) >= 4.7;
                    
                    return (
                      <div key={w.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-2xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
@@ -419,7 +434,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                            <div className="flex flex-col items-end gap-2 shrink-0 pt-2">
                              <div className="bg-white px-3 py-1 rounded-xl border border-gray-50 shadow-sm flex items-center text-amber-500 font-black text-sm">
                                 <span className="mr-1 text-xs">★</span>
-                                <span>{w.rating.toFixed(1)}</span>
+                                <span>{(w.rating || 0).toFixed(1)}</span>
                              </div>
                              <div className="flex items-center gap-1.5">
                                 <button 
@@ -476,7 +491,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                             <span>Direct Dial</span>
                           </a>
                           <a 
-                            href={`https://wa.me/${w.contact.replace(/\s/g, '')}`}
+                            href={`https://wa.me/${(w.contact || '').replace(/\s/g, '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 flex items-center justify-center space-x-3 py-4 bg-green-50 text-green-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-600 hover:text-white transition-all shadow-sm active:scale-95"
@@ -613,10 +628,10 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                        <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-lg">🛠️</div>
                        <div>
                          <span className="font-bold text-gray-800 block uppercase text-xs">{w.name}</span>
-                         <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">{w.specialization[0]}</span>
+                         <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">{(w.specialization || [])[0]}</span>
                        </div>
                      </div>
-                     <span className="text-amber-500 font-black text-[10px]">★{w.rating}</span>
+                     <span className="text-amber-500 font-black text-[10px]">★{(w.rating || 0).toFixed(1)}</span>
                    </button>
                  ))}
                  <button onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, 'none')} className="w-full p-4 rounded-2xl border border-dashed border-gray-200 text-gray-400 font-bold hover:bg-gray-50 uppercase text-[10px] tracking-widest mt-4">In-House / Other</button>
@@ -742,13 +757,13 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
                     value={newLog.bikeId}
                     onChange={e => {
-                        const bike = bikes.find(b => b.id === e.target.value);
-                        const ws = workshops.find(w => w.id === bike?.assignedWorkshopId);
+                        const bike = (bikes || []).find(b => b.id === e.target.value);
+                        const ws = (workshops || []).find(w => w.id === bike?.assignedWorkshopId);
                         setNewLog({...newLog, bikeId: e.target.value, performedBy: ws?.name || 'In-House Workshop'});
                     }}
                   >
                     <option value="">Choose Motorcycle...</option>
-                    {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
+                    {(bikes || []).map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
                   </select>
                 </div>
                 <div>
@@ -797,7 +812,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     onChange={e => setNewLog({...newLog, performedBy: e.target.value})}
                   >
                     <option value="In-House Workshop">In-House Workshop</option>
-                    {workshops.map(w => (
+                    {(workshops || []).map(w => (
                       <option key={w.id} value={w.name}>{w.name} ({w.city})</option>
                     ))}
                   </select>

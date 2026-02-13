@@ -19,13 +19,13 @@ interface DriverProfileProps {
 const DriverProfile: React.FC<DriverProfileProps> = ({ 
   driver, 
   onUpdateDriver, 
-  payments, 
+  payments = [], 
   fines = [],
   onAddFine,
   bike, 
-  maintenance, 
+  maintenance = [], 
   onAddMaintenance,
-  workshops,
+  workshops = [],
   weeklyTarget,
   isAdminViewing = false
 }) => {
@@ -56,42 +56,47 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   });
 
   const stats = useMemo(() => {
-    const driverPayments = payments.filter(p => p.driverId === driver.id);
-    const totalPaid = driverPayments.reduce((acc, p) => acc + p.amount, 0);
+    const driverPayments = (payments || []).filter(p => p?.driverId === driver.id);
+    const totalPaid = driverPayments.reduce((acc, p) => acc + (p?.amount || 0), 0);
     
     // Monthly Rent calculation
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const weeksInMonth = Math.ceil(lastDay / 7);
-    const expectedRent = weeksInMonth * weeklyTarget;
+    const expectedRent = weeksInMonth * (weeklyTarget || 0);
     const rentBalance = totalPaid - expectedRent;
     
     // Fines calculation
-    const driverFines = fines.filter(f => f.driverId === driver.id);
-    const unpaidFines = driverFines.filter(f => f.status === 'unpaid');
-    const totalUnpaidFines = unpaidFines.reduce((acc, f) => acc + f.amount, 0);
+    const driverFines = (fines || []).filter(f => f?.driverId === driver.id);
+    const unpaidFines = driverFines.filter(f => f?.status === 'unpaid');
+    const totalUnpaidFines = unpaidFines.reduce((acc, f) => acc + (f?.amount || 0), 0);
     
     // Final Standing
     const totalBalance = rentBalance - totalUnpaidFines;
     
-    const sortedPayments = [...driverPayments].sort((a, b) => b.weekNumber - a.weekNumber);
+    const sortedPayments = [...driverPayments].sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0));
     let streak = 0;
     for (let p of sortedPayments) {
-      if (p.amount >= weeklyTarget) streak++;
+      if (p && p.amount >= (weeklyTarget || 0)) streak++;
       else break;
     }
 
-    const bikeMaintenance = bike ? maintenance.filter(m => m.bikeId === bike.id) : [];
-    const totalMaintenanceCost = bikeMaintenance.reduce((acc, m) => acc + m.cost, 0);
+    const bikeMaintenance = bike ? (maintenance || []).filter(m => m?.bikeId === bike.id) : [];
+    const totalMaintenanceCost = bikeMaintenance.reduce((acc, m) => acc + (m?.cost || 0), 0);
 
     // Service Health logic
-    const routineServices = bikeMaintenance.filter(m => m.serviceType === 'routine' || m.serviceType === 'oil');
+    const routineServices = bikeMaintenance.filter(m => m?.serviceType === 'routine' || m?.serviceType === 'oil');
     let lastServiceDate = "Never";
     let serviceDaysDiff = 999;
     if (routineServices.length > 0) {
-      const latest = routineServices.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
-      lastServiceDate = new Date(latest.date).toLocaleDateString();
-      serviceDaysDiff = Math.floor((now.getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
+      const latest = routineServices.reduce((a, b) => {
+         const dA = new Date(a.date).getTime();
+         const dB = new Date(b.date).getTime();
+         return dA > dB ? a : b;
+      });
+      lastServiceDate = latest ? new Date(latest.date).toLocaleDateString() : "Never";
+      const latestTime = new Date(latest.date).getTime();
+      serviceDaysDiff = isNaN(latestTime) ? 999 : Math.floor((now.getTime() - latestTime) / (1000 * 60 * 60 * 24));
     }
 
     return { 
@@ -211,7 +216,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                  {driver.profilePictureUrl ? (
                    <img src={driver.profilePictureUrl} alt={driver.name} className="w-full h-full object-cover" />
                  ) : (
-                   driver.name.substring(0, 2).toUpperCase()
+                   (driver.name || '??').substring(0, 2).toUpperCase()
                  )}
                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <span className="text-[10px] font-black uppercase text-white tracking-widest text-center px-2">Update Profile Picture</span>
@@ -223,7 +228,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                   <span className="mr-2">🏁</span>
                   {stats.totalBalance >= 0 ? 'Verified Elite Standing' : 'Active Growth Phase'}
                 </div>
-                <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">Welcome back, <br className="hidden md:block"/> {driver.name.split(' ')[0]}</h2>
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">Welcome back, <br className="hidden md:block"/> {(driver.name || '').split(' ')[0]}</h2>
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
@@ -333,8 +338,8 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{payments.filter(p => p.driverId === driver.id).length} Records</span>
                 </div>
                 <div className="divide-y divide-gray-50">
-                  {payments
-                    .filter(p => p.driverId === driver.id)
+                  {(payments || [])
+                    .filter(p => p?.driverId === driver.id)
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .slice(0, 5)
                     .map(p => (
@@ -345,7 +350,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                           </div>
                           <div>
                             <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{p.type} ENTRY</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{new Date(p.date).toLocaleDateString('en-GB')}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{p.date ? new Date(p.date).toLocaleDateString('en-GB') : 'N/A'}</p>
                           </div>
                         </div>
                         <p className={`text-lg font-black ${p.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -377,7 +382,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                           <div>
                             <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{f.noticeNumber}</p>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{f.description}</p>
-                            <p className="text-[8px] text-gray-400 mt-0.5">{new Date(f.date).toLocaleDateString()}</p>
+                            <p className="text-[8px] text-gray-400 mt-0.5">{f.date ? new Date(f.date).toLocaleDateString() : 'N/A'}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -431,7 +436,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                                   <div>
                                      <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight">{m.description}</h4>
                                      <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{new Date(m.date).toLocaleDateString()}</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{m.date ? new Date(m.date).toLocaleDateString() : 'N/A'}</span>
                                         <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                                         <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md">{m.serviceType}</span>
                                         <span className="w-1 h-1 rounded-full bg-gray-300"></span>
@@ -440,7 +445,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                                   </div>
                                </div>
                                <div className="text-right">
-                                  <p className="text-lg font-black text-gray-800">R{m.cost.toLocaleString()}</p>
+                                  <p className="text-lg font-black text-gray-800">R{(m.cost || 0).toLocaleString()}</p>
                                   {m.attachmentUrl && <span className="text-[8px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">Slip Logged</span>}
                                </div>
                             </div>
@@ -484,7 +489,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                      <div className="relative z-10">
                         <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-amber-500">Workshop Partners</h4>
                         <div className="space-y-4">
-                           {workshops.filter(w => w.city === driver.city).slice(0, 2).map(w => (
+                           {(workshops || []).filter(w => w?.city === driver.city).slice(0, 2).map(w => (
                              <div key={w.id} className="flex items-center space-x-4 group/ws">
                                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl group-hover/ws:bg-amber-500 transition-colors">🏪</div>
                                 <div className="min-w-0">

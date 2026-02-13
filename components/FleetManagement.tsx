@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Bike, Driver, MaintenanceRecord, Payment, Workshop } from '../types';
 import { 
@@ -155,15 +154,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     return { status: 'good', label: `${diff}d`, progress };
   };
 
-  const getDiskStatus = (expiry?: string) => {
-    if (!expiry) return { status: 'unknown', days: 0 };
-    const exp = new Date(expiry);
-    const diff = Math.ceil((exp.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return { status: 'expired', days: diff };
-    if (diff < 30) return { status: 'warning', days: diff };
-    return { status: 'valid', days: diff };
-  };
-
   const updateBikeStatus = (id: string, newStatus: Bike['status']) => {
     if (newStatus === 'maintenance') {
       setAssigningWorkshopBikeId(id);
@@ -263,8 +253,12 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
           {filteredBikes.map(bike => {
             const driver = drivers.find(d => d.id === bike.assignedDriverId);
             const workshop = workshops.find(w => w.id === bike.assignedWorkshopId);
-            const disk = getDiskStatus(bike.licenseDiskExpiry);
             const service = getServiceStatus(bike.id);
+            const now = new Date();
+            const exp = bike.licenseDiskExpiry ? new Date(bike.licenseDiskExpiry) : null;
+            const diskDays = exp ? Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+            const diskStatus = diskDays < 0 ? 'expired' : diskDays < 30 ? 'warning' : 'valid';
+
             return (
               <div key={bike.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <div className="flex justify-between items-start">
@@ -335,7 +329,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                   </div>
                   <div className="text-right">
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Disk Expiry</p>
-                    <p className={`text-[10px] font-black ${disk.status === 'expired' ? 'text-red-600' : 'text-gray-800'}`}>{disk.days} Days</p>
+                    <p className={`text-[10px] font-black ${diskStatus === 'expired' ? 'text-red-600' : 'text-gray-800'}`}>{diskDays} Days</p>
                   </div>
                 </div>
 
@@ -370,7 +364,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               {filteredBikes.map(bike => {
                 const driver = drivers.find(d => d.id === bike.assignedDriverId);
                 const workshop = workshops.find(w => w.id === bike.assignedWorkshopId);
-                const disk = getDiskStatus(bike.licenseDiskExpiry);
                 const service = getServiceStatus(bike.id);
                 return (
                   <tr key={bike.id} className="hover:bg-gray-50/50 transition-all group">
@@ -709,7 +702,8 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={historyChartData}>
                           <defs>
-                            <linearGradient id="colorCost" x1="0" x2="0" x2="0" y2="1">
+                            {/* Fix: Removed duplicate x2 attribute and added missing y1 attribute in linearGradient */}
+                            <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
                               <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                             </linearGradient>

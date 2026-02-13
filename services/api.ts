@@ -28,16 +28,15 @@ export class MotoFleetCloud {
     const keys = Object.keys(localStorage);
     
     // 1. Try exact matches first with common prefixes
-    const prefixes = [`mf_v2_${this.fleetId}_`, `motofleet_`, `fleet_${this.fleetId}_`, ''];
+    const prefixes = [`mf_v2_${this.fleetId}_`, `motofleet_`, `fleet_${this.fleetId}_`, 'motofleet_manager_', ''];
     for (const prefix of prefixes) {
       const data = localStorage.getItem(`${prefix}${targetKey}`);
       if (data && data !== '[]' && data !== '{}' && data !== 'null') return data;
     }
 
     // 2. Brute force search: Find ANY key that ends with or contains the targetKey
-    // This catches keys like "maintenance-backup", "old_fines", etc.
     for (const storageKey of keys) {
-      if (storageKey.toLowerCase().includes(targetKey.toLowerCase())) {
+      if (storageKey.toLowerCase().endsWith(targetKey.toLowerCase())) {
         const data = localStorage.getItem(storageKey);
         if (data && data !== '[]' && data !== '{}' && data !== 'null') {
           console.log(`[Recovery Engine] Brute-force match found: "${storageKey}" -> Migrating to silo...`);
@@ -71,8 +70,12 @@ export class MotoFleetCloud {
             return;
           }
           const parsed = JSON.parse(saved);
-          // Return the array, ensuring it's not null
-          resolve((parsed || defaultValue) as T);
+          // Return the array, ensuring it's not null or empty if it's supposed to have initial data
+          if ((!parsed || (Array.isArray(parsed) && parsed.length === 0)) && defaultValue) {
+             resolve(defaultValue);
+          } else {
+             resolve(parsed as T);
+          }
         } catch (e) {
           console.error(`[Cloud Sync] Critical recovery error for ${key}:`, e);
           resolve(defaultValue);
