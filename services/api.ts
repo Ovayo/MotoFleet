@@ -18,10 +18,34 @@ export class MotoFleetCloud {
     return `fleet_${this.fleetId}_${key}`;
   }
 
+  /**
+   * Migrates data from the "Single Fleet" version (non-prefixed keys)
+   * to the new Multi-Tenant Silo.
+   */
+  private async migrateLegacy(key: string): Promise<string | null> {
+    const legacyData = localStorage.getItem(key);
+    if (legacyData && this.fleetId === 'fleet_001') {
+      console.log(`[Migration] Moving legacy data for ${key} to fleet_001 silo...`);
+      localStorage.setItem(this.getStorageKey(key), legacyData);
+      // We keep the legacy data for one session just in case, 
+      // but in a real app we might delete it here: localStorage.removeItem(key);
+      return legacyData;
+    }
+    return null;
+  }
+
   async fetch<T>(key: string, defaultValue: T): Promise<T> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+      // 1. Try to get from the specific fleet silo
+      const siloKey = this.getStorageKey(key);
+      let saved = localStorage.getItem(siloKey);
+
+      // 2. If not found in silo, check if there is legacy data to migrate (only for fleet_001)
+      if (!saved) {
+        saved = await this.migrateLegacy(key);
+      }
+
       setTimeout(() => {
-        const saved = localStorage.getItem(this.getStorageKey(key));
         resolve(saved ? JSON.parse(saved) : defaultValue);
       }, CLOUD_LATENCY);
     });
