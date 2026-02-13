@@ -14,6 +14,7 @@ interface MaintenanceLogProps {
 const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onAddMaintenance, onUpdateMaintenance, onDeleteMaintenance, workshops }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -41,6 +42,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
 
   const handleEdit = (record: MaintenanceRecord) => {
     setEditingId(record.id);
+    setIsDuplicating(false);
     setFormData({
       bikeId: record.bikeId,
       date: record.date,
@@ -49,6 +51,24 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
       serviceType: record.serviceType,
       performedBy: record.performedBy || 'In-House Workshop',
       attachmentUrl: record.attachmentUrl || ''
+    });
+    setShowForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
+  const handleDuplicate = (record: MaintenanceRecord) => {
+    setEditingId(null);
+    setIsDuplicating(true);
+    setFormData({
+      bikeId: record.bikeId,
+      date: new Date().toISOString().split('T')[0], // Reset to today for the clone
+      description: `${record.description}`,
+      cost: record.cost,
+      serviceType: record.serviceType,
+      performedBy: record.performedBy || 'In-House Workshop',
+      attachmentUrl: '' // Don't copy attachment for safety
     });
     setShowForm(true);
     setTimeout(() => {
@@ -69,6 +89,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
   const resetForm = () => {
     setShowForm(false);
     setEditingId(null);
+    setIsDuplicating(false);
     setFormData({
       bikeId: bikes[0]?.id || '',
       date: new Date().toISOString().split('T')[0],
@@ -97,14 +118,26 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
             if (showForm) resetForm();
             else setShowForm(true);
           }}
-          className="bg-red-600 text-white px-6 py-2.5 rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-100 font-black uppercase text-[10px] tracking-widest"
+          className={`px-6 py-2.5 rounded-xl transition-all shadow-lg font-black uppercase text-[10px] tracking-widest ${
+            showForm ? 'bg-gray-800 text-white shadow-gray-200' : 'bg-red-600 text-white shadow-red-100 hover:bg-red-700'
+          }`}
         >
-          {showForm ? 'Cancel Entry' : '+ Log Expense'}
+          {showForm ? 'Close Terminal' : '+ Log Expense'}
         </button>
       </div>
 
       {showForm && (
         <form ref={formRef} onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-xl border border-red-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
+             <div>
+               <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">
+                 {editingId ? 'Modify Record' : isDuplicating ? 'Cloning Record' : 'Post New Expense'}
+               </h3>
+               {isDuplicating && <p className="text-[9px] text-amber-600 font-black uppercase mt-1">Duplicating telemetry from previous entry</p>}
+             </div>
+             <button type="button" onClick={resetForm} className="text-gray-300 hover:text-gray-900 text-xl leading-none">&times;</button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Asset Allocation</label>
@@ -218,17 +251,17 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
             </div>
             
             <div className="lg:col-span-4 flex justify-end pt-4 space-x-3">
-              {editingId && (
+              {(editingId || isDuplicating) && (
                 <button 
                   type="button"
                   onClick={resetForm}
-                  className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs"
+                  className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-200 transition-colors"
                 >
-                  Cancel Edit
+                  Discard
                 </button>
               )}
               <button type="submit" className="bg-red-600 text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95">
-                {editingId ? 'Update Operational Expense' : 'Commit Operational Expense'}
+                {editingId ? 'Update Operational Expense' : isDuplicating ? 'Commit Cloned Expense' : 'Commit Operational Expense'}
               </button>
             </div>
           </div>
@@ -237,7 +270,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
 
       <div className="grid grid-cols-1 gap-4">
         {maintenance.length === 0 ? (
-          <div className="bg-white p-20 text-center rounded-[2.5rem] border border-dashed border-gray-200">
+          <div className="bg-white p-20 text-center rounded-[2.5rem] border border-dashed border-gray-200 shadow-inner">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 opacity-50">🛠️</div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Technician Log Empty</p>
             <p className="text-xs text-gray-400 mt-2 font-medium">Click "Log Expense" to populate the technical registry.</p>
@@ -267,8 +300,8 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                   }`}>
                     {getIcon(record.serviceType)}
                   </div>
-                  <div>
-                    <div className="font-black text-gray-800 tracking-tight leading-tight uppercase">{bike?.licenseNumber || 'N/A'} — {record.description}</div>
+                  <div className="min-w-0">
+                    <div className="font-black text-gray-800 tracking-tight leading-tight uppercase truncate">{bike?.licenseNumber || 'N/A'} — {record.description}</div>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{new Date(record.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       <span className="text-[8px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">{record.serviceType}</span>
@@ -289,6 +322,13 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                       </button>
                     )}
                     <button 
+                      onClick={() => handleDuplicate(record)}
+                      className="p-2.5 bg-gray-50 rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-all border border-gray-100"
+                      title="Duplicate Entry"
+                    >
+                      <span className="text-base">📑</span>
+                    </button>
+                    <button 
                       onClick={() => handleEdit(record)}
                       className="p-2.5 bg-gray-50 rounded-xl hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-all border border-gray-100"
                       title="Edit Entry"
@@ -303,7 +343,7 @@ const MaintenanceLog: React.FC<MaintenanceLogProps> = ({ bikes, maintenance, onA
                       <span className="text-base">🗑️</span>
                     </button>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right min-w-[100px]">
                     <div className="text-xl font-black text-gray-800">R{record.cost.toLocaleString()}</div>
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Entry Total</p>
                   </div>
