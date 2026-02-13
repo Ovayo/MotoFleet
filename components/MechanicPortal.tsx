@@ -97,13 +97,16 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
   const getSpecIcon = (spec: string) => {
     const s = spec.toLowerCase();
-    if (s.includes('hero') || s.includes('honda') || s.includes('bike') || s.includes('moto')) return '🏍️';
-    if (s.includes('engine') || s.includes('major') || s.includes('technical')) return '⚙️';
+    if (s.includes('hero')) return '🦸';
+    if (s.includes('honda')) return '🇯🇵';
+    if (s.includes('engine') || s.includes('rebuild')) return '⚙️';
     if (s.includes('tyre') || s.includes('wheel')) return '🛞';
     if (s.includes('service') || s.includes('routine')) return '🛠️';
     if (s.includes('oil') || s.includes('lube')) return '🛢️';
-    if (s.includes('sprocket') || s.includes('chain') || s.includes('parts')) return '📦';
+    if (s.includes('sprocket') || s.includes('chain')) return '🔗';
     if (s.includes('electric') || s.includes('battery')) return '⚡';
+    if (s.includes('brake')) return '🛑';
+    if (s.includes('body') || s.includes('fairing')) return '🛡️';
     return '🔹';
   };
 
@@ -321,13 +324,13 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
           {activeTab === 'workshops' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-left-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm">
                 <div className="relative flex-1">
                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
                    <input 
                     type="text" 
                     placeholder="Search workshop or specialization..." 
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
                     value={workshopSearch}
                     onChange={(e) => setWorkshopSearch(e.target.value)}
                    />
@@ -366,15 +369,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                  {filteredWorkshops.map(w => {
                    const primarySpec = w.specialization[0];
                    const otherSpecs = w.specialization.slice(1);
+                   const isTopRated = w.rating >= 4.7;
                    
                    return (
                      <div key={w.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-2xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
-                        {/* Status Label */}
-                        <div className="absolute top-0 right-0">
-                           <div className="bg-amber-50 text-amber-600 px-6 py-2 rounded-bl-3xl font-black text-[9px] uppercase tracking-widest border-b border-l border-amber-100 shadow-sm">
-                             Partner Network
-                           </div>
-                        </div>
+                        {isTopRated && (
+                          <div className="absolute top-0 right-0">
+                             <div className="bg-amber-50 text-amber-600 px-6 py-2 rounded-bl-3xl font-black text-[9px] uppercase tracking-widest border-b border-l border-amber-100 shadow-sm">
+                               ★ Top Rated Partner
+                             </div>
+                          </div>
+                        )}
 
                         <div className="flex justify-between items-start mb-6">
                            <div className="flex items-center space-x-5">
@@ -412,24 +417,26 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                         </div>
 
                         <div className="space-y-4 mb-8">
-                           {/* Primary Specialization Highlight */}
+                           {/* Primary Specialization Highlight - PROMINENT */}
                            {primarySpec && (
-                             <div className="bg-amber-600 p-4 rounded-2xl text-white shadow-lg shadow-amber-100 flex items-center justify-between group-hover:translate-x-1 transition-transform">
-                                <div className="flex items-center space-x-3">
-                                   <span className="text-xl">{getSpecIcon(primarySpec)}</span>
+                             <div className="bg-amber-600 p-5 rounded-[2rem] text-white shadow-xl shadow-amber-100 flex items-center justify-between group-hover:translate-x-1 transition-transform border-4 border-amber-500/30">
+                                <div className="flex items-center space-x-4">
+                                   <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-md">
+                                     {getSpecIcon(primarySpec)}
+                                   </div>
                                    <div>
-                                      <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Primary Expertise</p>
-                                      <p className="text-xs font-black uppercase tracking-tight">{primarySpec}</p>
+                                      <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">Technical Focus</p>
+                                      <p className="text-sm font-black uppercase tracking-tight">{primarySpec}</p>
                                    </div>
                                 </div>
-                                <span className="text-[10px] font-black opacity-40">GO-TO</span>
+                                <span className="text-[10px] font-black bg-white/10 px-3 py-1 rounded-full border border-white/20">SPECIALIST</span>
                              </div>
                            )}
 
                            <div className="flex flex-wrap gap-2">
                              {otherSpecs.map((s, i) => (
-                               <div key={i} className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-gray-100 hover:bg-white hover:border-amber-200 transition-colors">
-                                 <span>{getSpecIcon(s)}</span>
+                               <div key={i} className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-gray-100 hover:bg-white hover:border-amber-200 transition-colors">
+                                 <span className="text-base">{getSpecIcon(s)}</span>
                                  <span>{s}</span>
                                </div>
                              ))}

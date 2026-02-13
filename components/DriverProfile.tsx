@@ -11,6 +11,7 @@ interface DriverProfileProps {
   onAddMaintenance: (record: Omit<MaintenanceRecord, 'id'>) => void;
   workshops: Workshop[];
   weeklyTarget: number;
+  isAdminViewing?: boolean;
 }
 
 const DriverProfile: React.FC<DriverProfileProps> = ({ 
@@ -21,7 +22,8 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   maintenance, 
   onAddMaintenance,
   workshops,
-  weeklyTarget 
+  weeklyTarget,
+  isAdminViewing = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logFileInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +121,19 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
   return (
     <div className="w-full space-y-6 pb-20 md:pb-8">
+      {isAdminViewing && (
+        <div className="bg-blue-600 text-white p-3 rounded-2xl mb-4 flex items-center justify-between shadow-xl shadow-blue-500/20 animate-in slide-in-from-top-4">
+           <div className="flex items-center space-x-3">
+              <span className="text-xl">🕵️</span>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest">Administrator Preview Active</p>
+                <p className="text-[8px] font-bold opacity-70 uppercase">You are currently viewing {driver.name}'s dedicated portal.</p>
+              </div>
+           </div>
+           <span className="text-[9px] font-black border border-white/30 px-2 py-0.5 rounded-full uppercase">Impersonation Mode</span>
+        </div>
+      )}
+
       {/* Header Branding Section */}
       <div 
         className="relative overflow-hidden rounded-[2.5rem] shadow-2xl shadow-green-100/50 transition-all duration-500"

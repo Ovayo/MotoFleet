@@ -22,8 +22,18 @@ const App: React.FC = () => {
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
-  // 1. Multi-Tenancy: State for the current active fleet
-  const [fleetId, setFleetId] = useState<string | null>(() => localStorage.getItem('active_fleet_id'));
+  // 1. Multi-Tenancy State with Legacy Fallback
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
+  });
+
+  const [fleetId, setFleetId] = useState<string | null>(() => {
+    const saved = localStorage.getItem('active_fleet_id');
+    // If user is authenticated but has no fleet ID, default to fleet_001 to recover legacy data
+    if (!saved && isAdminAuthenticated) return 'fleet_001';
+    return saved;
+  });
+  
   const [fleetName, setFleetName] = useState<string>(() => localStorage.getItem('active_fleet_name') || 'Main Fleet');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
@@ -42,11 +52,8 @@ const App: React.FC = () => {
   );
 
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
-  });
   
-  // Data State (Loaded from Simulated Cloud)
+  // Data State
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -55,10 +62,11 @@ const App: React.FC = () => {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
 
-  // Initial Boot & Data Hydration from "Cloud"
+  // Initial Boot & Data Hydration
   useEffect(() => {
     const hydrate = async () => {
-      if (!fleetId && isAdminAuthenticated) {
+      // If we don't have a fleet ID yet (and not in dedicated driver mode), we can't hydrate
+      if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode) {
         setLoading(false);
         return;
       }
@@ -89,18 +97,17 @@ const App: React.FC = () => {
     hydrate();
   }, [fleetId, cloud]);
 
-  // Sync back to "Cloud" whenever state changes
-  useEffect(() => { if (!loading) cloud.persist('bikes', bikes); }, [bikes, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('drivers', drivers); }, [drivers, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('payments', payments); }, [payments, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('maintenance', maintenance); }, [maintenance, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('fines', fines); }, [fines, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('workshops', workshops); }, [workshops, loading, cloud]);
-  useEffect(() => { if (!loading) cloud.persist('notifications', notifications); }, [notifications, loading, cloud]);
+  // Persistence triggers
+  useEffect(() => { if (!loading && fleetId) cloud.persist('bikes', bikes); }, [bikes, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('drivers', drivers); }, [drivers, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('payments', payments); }, [payments, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('fines', fines); }, [fines, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('workshops', workshops); }, [workshops, loading, cloud]);
+  useEffect(() => { if (!loading && fleetId) cloud.persist('notifications', notifications); }, [notifications, loading, cloud]);
 
   const WEEKLY_TARGET = 650;
 
-  // 3. Automated Notifications Trigger
   const triggerAutomations = async () => {
     setIsCloudSyncing(true);
     const newNotifs = await cloud.triggerAutomationCheck({ drivers, payments, weeklyTarget: WEEKLY_TARGET });
@@ -193,21 +200,7 @@ const App: React.FC = () => {
   };
 
   const renderView = () => {
-    if (role === 'driver' && loggedDriver) {
-      return (
-        <DriverProfile 
-          driver={loggedDriver} 
-          onUpdateDriver={handleUpdateDriver}
-          payments={payments} 
-          bike={bikes.find(b => b.assignedDriverId === loggedDriver.id)} 
-          maintenance={maintenance}
-          onAddMaintenance={handleAddMaintenance}
-          workshops={workshops}
-          weeklyTarget={WEEKLY_TARGET}
-        />
-      );
-    }
-
+    // 1. Mechanic Hub
     if (role === 'mechanic') {
       return (
         <MechanicPortal 
@@ -223,14 +216,37 @@ const App: React.FC = () => {
       );
     }
 
-    if (!isAdminAuthenticated) {
+    // 2. Admin Authentication Gate
+    if (!isAdminAuthenticated && !isDedicatedDriverMode) {
       return <AdminLogin onLogin={handleAdminLogin} />;
     }
 
-    if (role === 'driver' && !loggedDriver) {
+    // 3. Driver Profile View (Admin Bypass Logic)
+    if (role === 'driver') {
+      // If Admin is logged in, use the first driver as a "Simulation" if nobody is logged in
+      const activeDriver = loggedDriver || (isAdminAuthenticated ? drivers[0] : null);
+      
+      if (activeDriver) {
+        return (
+          <DriverProfile 
+            driver={activeDriver} 
+            onUpdateDriver={handleUpdateDriver}
+            payments={payments} 
+            bike={bikes.find(b => b.assignedDriverId === activeDriver.id)} 
+            maintenance={maintenance}
+            onAddMaintenance={handleAddMaintenance}
+            workshops={workshops}
+            weeklyTarget={WEEKLY_TARGET}
+            isAdminViewing={isAdminAuthenticated}
+          />
+        );
+      }
+      
+      // Only show Driver Login if NOT an admin and NOT logged in
       return <DriverLogin onLogin={handleDriverLogin} />;
     }
 
+    // 4. Admin Management Views
     switch (view) {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
@@ -260,7 +276,7 @@ const App: React.FC = () => {
     }
   };
 
-  const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && loggedDriver);
+  const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && (loggedDriver || isAdminAuthenticated));
 
   if (loading) {
     return <LoadingScreen />;
@@ -279,6 +295,7 @@ const App: React.FC = () => {
             setRole(newRole);
             if (newRole === 'admin') setView('dashboard');
             if (newRole === 'mechanic') setView('mechanic-portal');
+            if (newRole === 'driver') setView('driver-profile');
           }}
         />
       )}
@@ -289,7 +306,7 @@ const App: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
-                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `My Portfolio`}
+                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
                 </h1>
                 {isAdminAuthenticated && (
                   <div className="flex items-center space-x-2 ml-4">
@@ -303,7 +320,7 @@ const App: React.FC = () => {
                 )}
               </div>
               <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
-                {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : (loggedDriver?.name || 'Authorized Access')}
+                {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : (loggedDriver?.name || 'Admin Simulation')}
               </p>
             </div>
             
@@ -322,7 +339,7 @@ const App: React.FC = () => {
                 {role === 'driver' && loggedDriver?.profilePictureUrl ? (
                   <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
                 ) : (
-                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AV')
+                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AS')
                 )}
               </div>
             </div>
