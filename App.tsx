@@ -251,6 +251,8 @@ const App: React.FC = () => {
             driver={activeDriver} 
             onUpdateDriver={handleUpdateDriver}
             payments={payments} 
+            fines={fines}
+            onAddFine={handleAddFine}
             bike={bikes.find(b => b.assignedDriverId === activeDriver.id)} 
             maintenance={maintenance}
             onAddMaintenance={handleAddMaintenance}

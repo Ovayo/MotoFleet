@@ -1,11 +1,13 @@
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Driver, Payment, Bike, MaintenanceRecord, Workshop } from '../types';
+import { Driver, Payment, Bike, MaintenanceRecord, Workshop, TrafficFine } from '../types';
 
 interface DriverProfileProps {
   driver: Driver;
   onUpdateDriver: (updatedDriver: Driver) => void;
   payments: Payment[];
+  fines: TrafficFine[];
+  onAddFine: (fine: Omit<TrafficFine, 'id'>) => void;
   bike?: Bike;
   maintenance: MaintenanceRecord[];
   onAddMaintenance: (record: Omit<MaintenanceRecord, 'id'>) => void;
@@ -18,6 +20,8 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   driver, 
   onUpdateDriver, 
   payments, 
+  fines = [],
+  onAddFine,
   bike, 
   maintenance, 
   onAddMaintenance,
@@ -29,6 +33,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   const logFileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'portfolio' | 'service'>('portfolio');
   const [showLogForm, setShowLogForm] = useState(false);
+  const [showFineForm, setShowFineForm] = useState(false);
 
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
     bikeId: bike?.id || '',
@@ -40,16 +45,34 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     attachmentUrl: ''
   });
 
+  const [fineFormData, setFineFormData] = useState<Omit<TrafficFine, 'id'>>({
+    bikeId: bike?.id || '',
+    driverId: driver.id,
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    noticeNumber: '',
+    description: '',
+    status: 'unpaid'
+  });
+
   const stats = useMemo(() => {
     const driverPayments = payments.filter(p => p.driverId === driver.id);
     const totalPaid = driverPayments.reduce((acc, p) => acc + p.amount, 0);
     
-    // Monthly calculation
+    // Monthly Rent calculation
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const weeksInMonth = Math.ceil(lastDay / 7);
-    const expected = weeksInMonth * weeklyTarget;
-    const balance = totalPaid - expected;
+    const expectedRent = weeksInMonth * weeklyTarget;
+    const rentBalance = totalPaid - expectedRent;
+    
+    // Fines calculation
+    const driverFines = fines.filter(f => f.driverId === driver.id);
+    const unpaidFines = driverFines.filter(f => f.status === 'unpaid');
+    const totalUnpaidFines = unpaidFines.reduce((acc, f) => acc + f.amount, 0);
+    
+    // Final Standing
+    const totalBalance = rentBalance - totalUnpaidFines;
     
     const sortedPayments = [...driverPayments].sort((a, b) => b.weekNumber - a.weekNumber);
     let streak = 0;
@@ -71,8 +94,20 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
       serviceDaysDiff = Math.floor((now.getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    return { totalPaid, balance, streak, expected, bikeMaintenance, totalMaintenanceCost, lastServiceDate, serviceDaysDiff };
-  }, [payments, driver.id, weeklyTarget, bike, maintenance]);
+    return { 
+      totalPaid, 
+      rentBalance, 
+      totalUnpaidFines, 
+      totalBalance, 
+      streak, 
+      expectedRent, 
+      bikeMaintenance, 
+      totalMaintenanceCost, 
+      lastServiceDate, 
+      serviceDaysDiff,
+      driverFines
+    };
+  }, [payments, fines, driver.id, weeklyTarget, bike, maintenance]);
 
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,6 +147,21 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     });
   };
 
+  const handleFineSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAddFine(fineFormData);
+    setShowFineForm(false);
+    setFineFormData({
+      bikeId: bike?.id || '',
+      driverId: driver.id,
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      noticeNumber: '',
+      description: '',
+      status: 'unpaid'
+    });
+  };
+
   const requestSupport = () => {
     const message = `Emergency Support Required: Driver ${driver.name}, Vehicle ${bike?.licenseNumber}. I am currently experiencing technical issues. Please assist.`;
     window.open(`https://wa.me/0718398532?text=${encodeURIComponent(message)}`, '_blank');
@@ -130,7 +180,15 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                 <p className="text-[8px] font-bold opacity-70 uppercase">You are currently viewing {driver.name}'s dedicated portal.</p>
               </div>
            </div>
-           <span className="text-[9px] font-black border border-white/30 px-2 py-0.5 rounded-full uppercase">Impersonation Mode</span>
+           <div className="flex items-center space-x-2">
+             <button 
+                onClick={() => setShowFineForm(true)}
+                className="bg-white/20 hover:bg-white/40 px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-colors"
+             >
+               + Assign Fine
+             </button>
+             <span className="text-[9px] font-black border border-white/30 px-2 py-0.5 rounded-full uppercase">Impersonation Mode</span>
+           </div>
         </div>
       )}
 
@@ -163,7 +221,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                <div className="space-y-2">
                 <div className="inline-flex items-center bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20">
                   <span className="mr-2">🏁</span>
-                  {stats.balance >= 0 ? 'Verified Elite Standing' : 'Active Growth Phase'}
+                  {stats.totalBalance >= 0 ? 'Verified Elite Standing' : 'Active Growth Phase'}
                 </div>
                 <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">Welcome back, <br className="hidden md:block"/> {driver.name.split(' ')[0]}</h2>
               </div>
@@ -206,18 +264,31 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         {activeTab === 'portfolio' ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col justify-between">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Financial Standing</p>
-                <div className="flex items-baseline space-x-2">
-                  <h3 className={`text-4xl font-black ${stats.balance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    R{stats.balance}
-                  </h3>
-                  <span className="text-gray-400 text-xs font-black uppercase">{stats.balance >= 0 ? 'Surplus' : 'Arrears'}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Account Standing</p>
+                <div className="flex flex-col">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className={`text-4xl font-black ${stats.totalBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      R{stats.totalBalance}
+                    </h3>
+                    <span className="text-gray-400 text-xs font-black uppercase">{stats.totalBalance >= 0 ? 'Surplus' : 'Liability'}</span>
+                  </div>
+                  {stats.totalUnpaidFines > 0 && (
+                    <div className="mt-2 text-red-400 text-[10px] font-bold uppercase tracking-widest bg-red-50 px-3 py-1 rounded-full w-fit">
+                      Includes R{stats.totalUnpaidFines} in Fines
+                    </div>
+                  )}
                 </div>
-                <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weekly Target:</span>
-                   <span className="text-sm font-black text-gray-800">R{weeklyTarget}</span>
+                <div className="mt-6 pt-6 border-t border-gray-50 flex flex-col space-y-2">
+                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                     <span className="text-gray-400">Monthly Rent:</span>
+                     <span className="text-gray-800">R{stats.expectedRent}</span>
+                   </div>
+                   <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                     <span className="text-gray-400">Total Paid:</span>
+                     <span className="text-green-600">R{stats.totalPaid}</span>
+                   </div>
                 </div>
               </div>
 
@@ -238,40 +309,90 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No Asset Assigned</p>
                 </div>
               )}
+
+              <div className="bg-gray-900 p-8 rounded-[2.5rem] shadow-xl text-white flex flex-col justify-center">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Active Infringements</p>
+                <div className="flex items-center justify-between">
+                   <div>
+                     <p className="text-4xl font-black text-red-500">{stats.driverFines.length}</p>
+                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Total Notices</p>
+                   </div>
+                   <div className="text-right">
+                     <p className="text-2xl font-black text-white">R{stats.totalUnpaidFines}</p>
+                     <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mt-1">Unpaid Liability</p>
+                   </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-8 border-b border-gray-50 flex justify-between items-center">
-                 <h3 className="font-black text-gray-800 uppercase text-xs tracking-[0.2em]">Financial Transaction History</h3>
-                 <button className="text-[9px] font-black text-green-600 uppercase tracking-widest hover:underline">Download PDF</button>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {payments
-                  .filter(p => p.driverId === driver.id)
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 10)
-                  .map(p => (
-                    <div key={p.id} className="p-6 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-                      <div className="flex items-center space-x-6">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${p.amount >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                          {p.amount >= 0 ? '💸' : '⚠️'}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Payments Section */}
+              <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                   <h3 className="font-black text-gray-800 uppercase text-xs tracking-[0.2em]">Rental Collections</h3>
+                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{payments.filter(p => p.driverId === driver.id).length} Records</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {payments
+                    .filter(p => p.driverId === driver.id)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 5)
+                    .map(p => (
+                      <div key={p.id} className="p-6 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
+                        <div className="flex items-center space-x-6">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${p.amount >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                            {p.amount >= 0 ? '💸' : '⚠️'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{p.type} ENTRY</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{new Date(p.date).toLocaleDateString('en-GB')}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{p.type} PAYMENT</p>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Week {p.weekNumber} • {new Date(p.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        <p className={`text-lg font-black ${p.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {p.amount >= 0 ? `+R${p.amount}` : `R${p.amount}`}
+                        </p>
+                      </div>
+                    ))}
+                  {payments.filter(p => p.driverId === driver.id).length === 0 && (
+                    <div className="py-20 text-center text-gray-300 font-black uppercase text-[10px] tracking-widest">No rental data</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Fines Section */}
+              <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                   <h3 className="font-black text-gray-800 uppercase text-xs tracking-[0.2em]">Traffic Infringements</h3>
+                   <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">{stats.driverFines.length} Notices</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {stats.driverFines
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map(f => (
+                      <div key={f.id} className="p-6 flex justify-between items-center hover:bg-gray-50/50 transition-colors group">
+                        <div className="flex items-center space-x-6">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${f.status === 'unpaid' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                            🚔
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-gray-800 uppercase tracking-tight">{f.noticeNumber}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{f.description}</p>
+                            <p className="text-[8px] text-gray-400 mt-0.5">{new Date(f.date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-lg font-black ${f.status === 'unpaid' ? 'text-red-600' : 'text-gray-400'}`}>R{f.amount}</p>
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${f.status === 'unpaid' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                            {f.status}
+                          </span>
                         </div>
                       </div>
-                      <p className={`text-lg font-black ${p.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {p.amount >= 0 ? `+R${p.amount}` : `R${p.amount}`}
-                      </p>
-                    </div>
-                  ))}
-              </div>
-              {payments.filter(p => p.driverId === driver.id).length === 0 && (
-                <div className="py-20 text-center">
-                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No recorded transactions</p>
+                    ))}
+                  {stats.driverFines.length === 0 && (
+                    <div className="py-20 text-center text-gray-300 font-black uppercase text-[10px] tracking-widest">Clear Record</div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         ) : (
@@ -467,6 +588,68 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                  <button type="submit" className="flex-[2] bg-amber-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all">Submit operational Report</button>
               </div>
            </form>
+        </div>
+      )}
+
+      {/* Admin Fine Assignment Modal */}
+      {showFineForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <form onSubmit={handleFineSubmit} className="bg-white p-8 md:p-10 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 animate-in zoom-in duration-200">
+            <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+               <div>
+                 <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Assign Traffic Notice</h3>
+                 <p className="text-[10px] text-red-500 font-black uppercase tracking-widest mt-1">Direct Liability Link: {driver.name}</p>
+               </div>
+               <button type="button" onClick={() => setShowFineForm(false)} className="text-gray-400 hover:text-gray-900 text-4xl leading-none">&times;</button>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Notice Number</label>
+                <input 
+                  required 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                  value={fineFormData.noticeNumber} 
+                  onChange={e => setFineFormData({...fineFormData, noticeNumber: e.target.value})}
+                  placeholder="e.g. INF-2023-XX"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Amount (R)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                    value={fineFormData.amount || ''} 
+                    onChange={e => setFineFormData({...fineFormData, amount: Number(e.target.value)})}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date</label>
+                  <input 
+                    type="date" 
+                    required 
+                    className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                    value={fineFormData.date} 
+                    onChange={e => setFineFormData({...fineFormData, date: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Infringement Narrative</label>
+                <textarea 
+                  required 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold resize-none h-20" 
+                  value={fineFormData.description} 
+                  onChange={e => setFineFormData({...fineFormData, description: e.target.value})}
+                  placeholder="e.g. Disobeyed stop sign at Cnr Main & 4th"
+                />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">Confirm Liability Link</button>
+          </form>
         </div>
       )}
     </div>
