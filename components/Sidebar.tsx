@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View } from '../types';
 
@@ -5,11 +6,19 @@ interface SidebarProps {
   activeView: View;
   setView: (view: View) => void;
   role: 'admin' | 'driver' | 'mechanic';
+  isAdminAuthenticated: boolean;
   onSwitchMode: (role: 'admin' | 'driver' | 'mechanic') => void;
   hideSwitcher?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMode, hideSwitcher = false }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  activeView, 
+  setView, 
+  role, 
+  isAdminAuthenticated, 
+  onSwitchMode, 
+  hideSwitcher = false 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const adminItems = [
@@ -79,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
             ))}
           </nav>
 
-          {!hideSwitcher && (
+          {!hideSwitcher && isAdminAuthenticated && (
             <div className="mt-auto pt-6 border-t border-gray-50">
               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 text-center">Identity Terminal</p>
               <div className="grid grid-cols-1 gap-2">
@@ -93,13 +102,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, role, onSwitchMo
                   onClick={() => onSwitchMode('mechanic')} 
                   className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${role === 'mechanic' ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
                 >
-                  Mechanic
+                  Mechanic Hub
                 </button>
                 <button 
                   onClick={() => onSwitchMode('driver')} 
                   className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${role === 'driver' ? 'bg-green-600 text-white shadow-lg shadow-green-100' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
                 >
-                  Driver Profile
+                  Driver Hub
                 </button>
               </div>
             </div>

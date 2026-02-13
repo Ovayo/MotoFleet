@@ -31,6 +31,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const [workshopSearch, setWorkshopSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<'all' | 'JHB' | 'CTN' | 'EL'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'rating'>('rating');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
@@ -94,14 +95,31 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   const workshopBikes = bikes.filter(b => b.status === 'maintenance');
   const roadmapBikes = [...bikes].sort((a, b) => getServiceStatus(b.id).days - getServiceStatus(a.id).days);
 
+  const getSpecIcon = (spec: string) => {
+    const s = spec.toLowerCase();
+    if (s.includes('hero') || s.includes('honda') || s.includes('bike') || s.includes('moto')) return '🏍️';
+    if (s.includes('engine') || s.includes('major') || s.includes('technical')) return '⚙️';
+    if (s.includes('tyre') || s.includes('wheel')) return '🛞';
+    if (s.includes('service') || s.includes('routine')) return '🛠️';
+    if (s.includes('oil') || s.includes('lube')) return '🛢️';
+    if (s.includes('sprocket') || s.includes('chain') || s.includes('parts')) return '📦';
+    if (s.includes('electric') || s.includes('battery')) return '⚡';
+    return '🔹';
+  };
+
   const filteredWorkshops = useMemo(() => {
-    return workshops.filter(w => {
+    let result = workshops.filter(w => {
       const matchesSearch = w.name.toLowerCase().includes(workshopSearch.toLowerCase()) || 
                            w.specialization.some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
       const matchesCity = cityFilter === 'all' || w.city === cityFilter;
       return matchesSearch && matchesCity;
     });
-  }, [workshops, workshopSearch, cityFilter]);
+
+    return result.sort((a, b) => {
+      if (sortBy === 'rating') return b.rating - a.rating;
+      return a.name.localeCompare(b.name);
+    });
+  }, [workshops, workshopSearch, cityFilter, sortBy]);
 
   const handleLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,6 +343,17 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     </button>
                   ))}
                 </div>
+                <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
+                  {(['rating', 'name'] as const).map(s => (
+                    <button 
+                      key={s}
+                      onClick={() => setSortBy(s)}
+                      className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}
+                    >
+                      Sort: {s}
+                    </button>
+                  ))}
+                </div>
                 <button 
                   onClick={() => setShowWorkshopForm(true)}
                   className="bg-amber-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all shrink-0 active:scale-95"
@@ -334,68 +363,100 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {filteredWorkshops.map(w => (
-                   <div key={w.id} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all group relative">
-                      <div className="flex justify-between items-start mb-4">
-                         <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl">🏙️</div>
-                            <div className="min-w-0">
-                               <h4 className="font-black text-gray-800 uppercase tracking-tight truncate">{w.name}</h4>
-                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{w.location} • {w.city}</p>
-                            </div>
-                         </div>
-                         <div className="flex flex-col items-end gap-2 shrink-0">
-                           <div className="flex items-center text-amber-500 font-black text-sm">
-                              <span className="mr-1">★</span>
-                              <span>{w.rating}</span>
+                 {filteredWorkshops.map(w => {
+                   const primarySpec = w.specialization[0];
+                   const otherSpecs = w.specialization.slice(1);
+                   
+                   return (
+                     <div key={w.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-2xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
+                        {/* Status Label */}
+                        <div className="absolute top-0 right-0">
+                           <div className="bg-amber-50 text-amber-600 px-6 py-2 rounded-bl-3xl font-black text-[9px] uppercase tracking-widest border-b border-l border-amber-100 shadow-sm">
+                             Partner Network
                            </div>
-                           <div className="flex items-center gap-1">
-                              <button 
-                                onClick={() => openEditWorkshop(w)}
-                                className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100"
-                                title="Edit Workshop"
-                              >
-                                ✏️
-                              </button>
-                              <button 
-                                onClick={() => onDeleteWorkshop(w.id)}
-                                className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                title="Remove Partner"
-                              >
-                                🗑️
-                              </button>
+                        </div>
+
+                        <div className="flex justify-between items-start mb-6">
+                           <div className="flex items-center space-x-5">
+                              <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-[1.5rem] flex items-center justify-center text-3xl shadow-inner group-hover:scale-105 transition-transform">🏪</div>
+                              <div className="min-w-0">
+                                 <h4 className="font-black text-gray-900 uppercase tracking-tight text-lg truncate leading-tight">{w.name}</h4>
+                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5 flex items-center">
+                                    <span className="mr-2">📍</span>
+                                    {w.location} • {w.city}
+                                 </p>
+                              </div>
                            </div>
-                         </div>
-                      </div>
+                           <div className="flex flex-col items-end gap-2 shrink-0 pt-2">
+                             <div className="bg-white px-3 py-1 rounded-xl border border-gray-50 shadow-sm flex items-center text-amber-500 font-black text-sm">
+                                <span className="mr-1 text-xs">★</span>
+                                <span>{w.rating.toFixed(1)}</span>
+                             </div>
+                             <div className="flex items-center gap-1.5">
+                                <button 
+                                  onClick={() => openEditWorkshop(w)}
+                                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100"
+                                  title="Edit Workshop"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  onClick={() => onDeleteWorkshop(w.id)}
+                                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                  title="Remove Partner"
+                                >
+                                  🗑️
+                                </button>
+                             </div>
+                           </div>
+                        </div>
 
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {w.specialization.map((s, i) => (
-                          <span key={i} className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-gray-100">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
+                        <div className="space-y-4 mb-8">
+                           {/* Primary Specialization Highlight */}
+                           {primarySpec && (
+                             <div className="bg-amber-600 p-4 rounded-2xl text-white shadow-lg shadow-amber-100 flex items-center justify-between group-hover:translate-x-1 transition-transform">
+                                <div className="flex items-center space-x-3">
+                                   <span className="text-xl">{getSpecIcon(primarySpec)}</span>
+                                   <div>
+                                      <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Primary Expertise</p>
+                                      <p className="text-xs font-black uppercase tracking-tight">{primarySpec}</p>
+                                   </div>
+                                </div>
+                                <span className="text-[10px] font-black opacity-40">GO-TO</span>
+                             </div>
+                           )}
 
-                      <div className="flex items-center gap-3 pt-4 border-t border-gray-50">
-                        <a 
-                          href={`tel:${w.contact}`}
-                          className="flex-1 flex items-center justify-center space-x-2 py-3 bg-amber-50 text-amber-700 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-600 hover:text-white transition-all"
-                        >
-                          <span>📞</span>
-                          <span>Call Shop</span>
-                        </a>
-                        <a 
-                          href={`https://wa.me/${w.contact.replace(/\s/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center space-x-2 py-3 bg-green-50 text-green-700 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-green-600 hover:text-white transition-all"
-                        >
-                          <span>💬</span>
-                          <span>WhatsApp</span>
-                        </a>
-                      </div>
-                   </div>
-                 ))}
+                           <div className="flex flex-wrap gap-2">
+                             {otherSpecs.map((s, i) => (
+                               <div key={i} className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-gray-100 hover:bg-white hover:border-amber-200 transition-colors">
+                                 <span>{getSpecIcon(s)}</span>
+                                 <span>{s}</span>
+                               </div>
+                             ))}
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-6 border-t border-gray-50">
+                          <a 
+                            href={`tel:${w.contact}`}
+                            className="flex-1 flex items-center justify-center space-x-3 py-4 bg-amber-50 text-amber-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
+                          >
+                            <span>📞</span>
+                            <span>Direct Dial</span>
+                          </a>
+                          <a 
+                            href={`https://wa.me/${w.contact.replace(/\s/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center space-x-3 py-4 bg-green-50 text-green-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-600 hover:text-white transition-all shadow-sm active:scale-95"
+                          >
+                            <span>💬</span>
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
+                     </div>
+                   );
+                 })}
                  {filteredWorkshops.length === 0 && (
                    <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200">
                       <div className="text-4xl mb-4">🔍</div>

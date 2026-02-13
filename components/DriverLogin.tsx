@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 
 interface DriverLoginProps {
   onLogin: (contact: string) => boolean;
-  onBackToAdmin?: () => void;
 }
 
-const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onBackToAdmin }) => {
+const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin }) => {
   const [contact, setContact] = useState('');
   const [error, setError] = useState(false);
 
@@ -58,17 +57,6 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onBackToAdmin }) => 
               Access My Portfolio
             </button>
           </form>
-
-          {onBackToAdmin && (
-            <div className="mt-8 text-center border-t border-gray-50 pt-6">
-              <button 
-                onClick={onBackToAdmin}
-                className="text-gray-400 hover:text-gray-600 text-sm font-medium transition-colors"
-              >
-                ← Back to Admin Login
-              </button>
-            </div>
-          )}
         </div>
         
         <p className="text-center mt-8 text-gray-400 text-xs">

@@ -20,21 +20,25 @@ const MiniCostChart = ({ bikeId, maintenance }: { bikeId: string, maintenance: M
     const records = maintenance
       .filter(m => m.bikeId === bikeId)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-5);
+      .slice(-7);
 
     if (records.length === 0) return [{ cost: 0 }];
     return records.map((r, i) => ({ id: i, cost: r.cost }));
   }, [bikeId, maintenance]);
 
   if (data.length === 1 && data[0].cost === 0) {
-    return <div className="text-[8px] text-gray-300 font-bold uppercase tracking-tighter">No Expense Data</div>;
+    return <div className="text-[7px] text-gray-300 font-black uppercase tracking-tighter bg-gray-50 px-2 py-1 rounded">No Data</div>;
   }
 
   return (
-    <div className="h-6 w-16 md:w-20">
+    <div className="h-7 w-16 md:w-20 bg-gray-50/50 rounded-lg p-1 border border-gray-100/50">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
-          <Bar dataKey="cost" fill="#94A3B8" radius={[1, 1, 0, 0]} />
+          <Bar dataKey="cost" radius={[1, 1, 0, 0]}>
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={index === data.length - 1 ? '#EF4444' : '#94A3B8'} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -267,6 +271,11 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                   <div>
                     <h4 className="font-black text-gray-800 text-lg uppercase leading-tight">{bike.licenseNumber}</h4>
                     <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
+                    <div className="mt-1 flex items-center">
+                       <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${driver ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                         {driver ? driver.name : 'Unassigned'}
+                       </span>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
@@ -323,13 +332,15 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                 </div>
 
                 <div className="flex gap-2 pt-2 items-center">
-                  <div className="flex flex-col items-center flex-1">
+                  <div className="flex flex-col items-center flex-1 pr-2">
                     <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Expense History</p>
                     <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
                   </div>
-                  <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
-                  <button onClick={() => setHistoryBikeId(bike.id)} className="flex-1 py-2 bg-gray-100 rounded-xl text-[9px] font-black uppercase tracking-widest">Full Log</button>
-                  <button onClick={() => handleDeleteBike(bike.id)} className="p-2 bg-red-50 text-red-600 rounded-xl">🗑️</button>
+                  <div className="flex gap-2 items-center shrink-0">
+                    <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
+                    <button onClick={() => setHistoryBikeId(bike.id)} className="px-4 py-2 bg-gray-100 rounded-xl text-[9px] font-black uppercase tracking-widest">Full Log</button>
+                    <button onClick={() => handleDeleteBike(bike.id)} className="p-2 bg-red-50 text-red-600 rounded-xl">🗑️</button>
+                  </div>
                 </div>
               </div>
             );
@@ -340,11 +351,11 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
           <table className="w-full text-left">
             <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifier</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifier & Driver</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Operator</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Health & Costs</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset Health</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status / Mechanic</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions & History</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -356,8 +367,13 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                 return (
                   <tr key={bike.id} className="hover:bg-gray-50/50 transition-all group">
                     <td className="px-8 py-6">
-                      <div className="font-black text-gray-900 uppercase tracking-tight text-lg">{bike.licenseNumber}</div>
+                      <div className="font-black text-gray-900 uppercase tracking-tight text-lg leading-tight">{bike.licenseNumber}</div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
+                      <div className="mt-1.5 flex items-center">
+                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border ${driver ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                           {driver ? driver.name : 'Unassigned'}
+                         </span>
+                      </div>
                     </td>
                     <td className="px-8 py-6">
                       {driver ? (
@@ -390,10 +406,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                           </div>
                           <span className="text-[9px] font-black uppercase text-gray-400">{service.label}</span>
                         </div>
-                        <div className="flex flex-col items-center">
-                          <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1">Expense Trend</p>
-                          <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
-                        </div>
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -420,23 +432,26 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                         {bike.status === 'maintenance' && workshop && (
                           <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded">At: {workshop.name}</p>
                         )}
-                        {bike.status === 'maintenance' && !workshop && (
-                          <p className="text-[8px] font-black text-red-400 uppercase tracking-widest italic">Unassigned Mechanic</p>
-                        )}
                       </div>
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button 
-                          onClick={() => setAssigningBikeId(bike.id)} 
-                          className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors" 
-                          title="Assign Driver"
-                        >
-                          👤+
-                        </button>
-                        <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
-                        <button onClick={() => setHistoryBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Maintenance Log">📜</button>
-                        <button onClick={() => handleDeleteBike(bike.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-xl">🗑️</button>
+                      <div className="flex items-center justify-end space-x-6">
+                        <div className="flex flex-col items-end shrink-0">
+                          <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1">Expense Trend</p>
+                          <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
+                        </div>
+                        <div className="flex items-center justify-end space-x-2 shrink-0">
+                          <button 
+                            onClick={() => setAssigningBikeId(bike.id)} 
+                            className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors" 
+                            title="Assign Driver"
+                          >
+                            👤+
+                          </button>
+                          <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
+                          <button onClick={() => setHistoryBikeId(bike.id)} className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-gray-50 flex items-center justify-center" title="Full Maintenance Log">📜</button>
+                          <button onClick={() => handleDeleteBike(bike.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-xl">🗑️</button>
+                        </div>
                       </div>
                     </td>
                   </tr>

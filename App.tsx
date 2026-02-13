@@ -10,8 +10,10 @@ import PaymentTracking from './components/PaymentTracking';
 import MaintenanceLog from './components/MaintenanceLog';
 import DriverProfile from './components/DriverProfile';
 import DriverLogin from './components/DriverLogin';
+import AdminLogin from './components/AdminLogin';
 import MechanicPortal from './components/MechanicPortal';
 import TrafficFines from './components/TrafficFines';
+import LoadingScreen from './components/LoadingScreen';
 
 const STORAGE_KEYS = {
   BIKES: 'motofleet_bikes_v3',
@@ -20,6 +22,7 @@ const STORAGE_KEYS = {
   MAINTENANCE: 'motofleet_maintenance_v3',
   FINES: 'motofleet_fines_v3',
   WORKSHOPS: 'motofleet_workshops_v3',
+  AUTH: 'motofleet_admin_auth_v1'
 };
 
 const App: React.FC = () => {
@@ -27,6 +30,7 @@ const App: React.FC = () => {
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(
     isDedicatedDriverMode ? 'driver-profile' : 
     isDedicatedMechanicMode ? 'mechanic-portal' : 'dashboard'
@@ -38,6 +42,9 @@ const App: React.FC = () => {
   );
 
   const [loggedDriver, setLoggedDriver] = useState<Driver | null>(null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
+  });
   
   const [bikes, setBikes] = useState<Bike[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BIKES);
@@ -70,6 +77,14 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    // Initial boot sequence
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BIKES, JSON.stringify(bikes));
   }, [bikes]);
 
@@ -92,6 +107,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.WORKSHOPS, JSON.stringify(workshops));
   }, [workshops]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.AUTH, isAdminAuthenticated ? 'true' : 'false');
+  }, [isAdminAuthenticated]);
 
   const WEEKLY_TARGET = 650;
 
@@ -162,8 +181,17 @@ const App: React.FC = () => {
     return false;
   };
 
+  const handleAdminLogin = (passcode: string) => {
+    if (passcode === 'admin123') {
+      setIsAdminAuthenticated(true);
+      return true;
+    }
+    return false;
+  };
+
   const handleLogout = () => {
     setLoggedDriver(null);
+    setIsAdminAuthenticated(false);
     if (isDedicatedDriverMode) {
       setRole('driver');
     } else if (isDedicatedMechanicMode) {
@@ -183,6 +211,8 @@ const App: React.FC = () => {
           payments={payments} 
           bike={bikes.find(b => b.assignedDriverId === loggedDriver.id)} 
           maintenance={maintenance}
+          onAddMaintenance={handleAddMaintenance}
+          workshops={workshops}
           weeklyTarget={WEEKLY_TARGET}
         />
       );
@@ -203,6 +233,17 @@ const App: React.FC = () => {
       );
     }
 
+    // Role is Admin or switching through portals. Check for authentication first.
+    if (!isAdminAuthenticated) {
+      return <AdminLogin onLogin={handleAdminLogin} />;
+    }
+
+    // If role is driver but not logged in as specific driver (impersonation/portal view)
+    if (role === 'driver' && !loggedDriver) {
+      return <DriverLogin onLogin={handleDriverLogin} />;
+    }
+
+    // Role is Admin and Authenticated
     switch (view) {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
@@ -225,85 +266,86 @@ const App: React.FC = () => {
         return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} onUpdateMaintenance={handleUpdateMaintenance} onDeleteMaintenance={handleDeleteMaintenance} workshops={workshops} />;
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
-      case 'mechanic-portal':
-        return (
-          <MechanicPortal 
-            bikes={bikes} 
-            setBikes={setBikes} 
-            maintenance={maintenance} 
-            onAddMaintenance={handleAddMaintenance} 
-            workshops={workshops} 
-            onAddWorkshop={handleAddWorkshop}
-            onUpdateWorkshop={handleUpdateWorkshop}
-            onDeleteWorkshop={handleDeleteWorkshop}
-          />
-        );
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
   };
 
-  if (role === 'driver' && !loggedDriver) {
-    return <DriverLogin onLogin={handleDriverLogin} onBackToAdmin={() => setRole('admin')} />;
+  // The sidebar should be shown if:
+  // 1. The user is an authenticated administrator (even if viewing other roles)
+  // 2. A mechanic is logged in
+  // 3. A driver is successfully logged in
+  const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && loggedDriver);
+
+  if (loading) {
+    return <LoadingScreen />;
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
-      <Sidebar 
-        activeView={view} 
-        setView={setView} 
-        role={role} 
-        hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
-        onSwitchMode={(newRole) => {
-          setRole(newRole);
-          if (newRole === 'admin') setView('dashboard');
-          if (newRole === 'mechanic') setView('mechanic-portal');
-          if (newRole === 'driver') setLoggedDriver(null);
-        }}
-      />
+      {showSidebar && (
+        <Sidebar 
+          activeView={view} 
+          setView={setView} 
+          role={role} 
+          isAdminAuthenticated={isAdminAuthenticated}
+          hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
+          onSwitchMode={(newRole) => {
+            setRole(newRole);
+            if (newRole === 'admin') setView('dashboard');
+            if (newRole === 'mechanic') setView('mechanic-portal');
+            if (newRole === 'driver') {
+              // Note: role switched to driver. renderView handles showing login or profile.
+            }
+          }}
+        />
+      )}
       
-      <main className={`flex-1 transition-all duration-300 w-full md:ml-64 p-4 md:p-8 pt-20 md:pt-8`}>
-        <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
-                {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `My Portfolio`}
-              </h1>
-              {role === 'admin' && (
-                <span className="hidden sm:inline-block text-[8px] md:text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                  Live Terminal
-                </span>
-              )}
+      <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-20 md:pt-8' : ''}`}>
+        {showSidebar && (
+          <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
+                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `My Portfolio`}
+                </h1>
+                {isAdminAuthenticated && (
+                  <button 
+                    onClick={() => { setRole('admin'); setView('dashboard'); }}
+                    className="hidden sm:inline-block text-[8px] md:text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100 hover:bg-blue-600 hover:text-white transition-all"
+                  >
+                    Admin Terminal
+                  </button>
+                )}
+              </div>
+              <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
+                {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : (loggedDriver?.name || 'Authorized Access')}
+              </p>
             </div>
-            <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
-              {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : `${loggedDriver?.name}`}
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-2 md:space-x-4">
-             {role !== 'admin' && (
-               <button 
+            
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <button 
                 onClick={handleLogout} 
                 className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
-               >
-                 Sign Out
-               </button>
-             )}
-            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
-              role === 'admin' ? 'bg-blue-600 shadow-blue-100' : 
-              role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
-              'bg-green-600 shadow-green-100'
-            }`}>
-              {role === 'driver' && loggedDriver?.profilePictureUrl ? (
-                <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
-              ) : (
-                role === 'admin' ? 'AD' : role === 'mechanic' ? 'ME' : loggedDriver?.name.substring(0, 2).toUpperCase()
-              )}
+              >
+                Sign Out
+              </button>
+              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
+                isAdminAuthenticated ? 'bg-blue-600 shadow-blue-100' : 
+                role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
+                'bg-green-600 shadow-green-100'
+              }`}>
+                {role === 'driver' && loggedDriver?.profilePictureUrl ? (
+                  <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
+                ) : (
+                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AV')
+                )}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
-        <div className="animate-in fade-in slide-in-from-bottom-3 duration-500">
+        <div className={showSidebar ? "animate-in fade-in slide-in-from-bottom-3 duration-500" : ""}>
           {renderView()}
         </div>
       </main>
