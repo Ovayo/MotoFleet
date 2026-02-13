@@ -158,6 +158,20 @@ const App: React.FC = () => {
     setFines(prev => (prev || []).map(f => f.id === id ? { ...f, status } : f));
   };
 
+  const handleAddWorkshop = (workshop: Omit<Workshop, 'id'>) => {
+    setWorkshops(prev => [...(prev || []), { ...workshop, id: `w-${Date.now()}` }]);
+  };
+
+  const handleUpdateWorkshop = (id: string, updatedWorkshop: Omit<Workshop, 'id'>) => {
+    setWorkshops(prev => (prev || []).map(w => w.id === id ? { ...updatedWorkshop, id } : w));
+  };
+
+  const handleDeleteWorkshop = (id: string) => {
+    if (window.confirm("Confirm removal of this workshop partner?")) {
+      setWorkshops(prev => (prev || []).filter(w => w.id !== id));
+    }
+  };
+
   const handleUpdateDriver = (updatedDriver: Driver) => {
     setDrivers(prev => (prev || []).map(d => d.id === updatedDriver.id ? updatedDriver : d));
     if (loggedDriver && loggedDriver.id === updatedDriver.id) {
@@ -218,9 +232,9 @@ const App: React.FC = () => {
           maintenance={maintenance} 
           onAddMaintenance={handleAddMaintenance} 
           workshops={workshops}
-          onAddWorkshop={() => {}}
-          onUpdateWorkshop={() => {}}
-          onDeleteWorkshop={() => {}}
+          onAddWorkshop={handleAddWorkshop}
+          onUpdateWorkshop={handleUpdateWorkshop}
+          onDeleteWorkshop={handleDeleteWorkshop}
         />
       );
     }
@@ -255,7 +269,17 @@ const App: React.FC = () => {
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
       case 'drivers':
-        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} weeklyTarget={WEEKLY_TARGET} />;
+        return (
+          <DriverManagement 
+            drivers={drivers} 
+            setDrivers={setDrivers} 
+            bikes={bikes} 
+            payments={payments} 
+            fines={fines}
+            onAddFine={handleAddFine}
+            weeklyTarget={WEEKLY_TARGET} 
+          />
+        );
       case 'payments':
         return (
           <PaymentTracking 

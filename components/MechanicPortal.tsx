@@ -14,11 +14,11 @@ interface MechanicPortalProps {
 }
 
 const MechanicPortal: React.FC<MechanicPortalProps> = ({ 
-  bikes, 
+  bikes = [], 
   setBikes, 
-  maintenance, 
+  maintenance = [], 
   onAddMaintenance,
-  workshops,
+  workshops = [],
   onAddWorkshop,
   onUpdateWorkshop,
   onDeleteWorkshop
@@ -79,7 +79,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
   const activeWarranties = useMemo(() => {
     const now = new Date();
-    return maintenance.filter(m => {
+    return (maintenance || []).filter(m => {
       if (!m.warrantyMonths) return false;
       const expiryDate = new Date(m.date);
       expiryDate.setMonth(expiryDate.getMonth() + m.warrantyMonths);
@@ -92,8 +92,10 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   }, [maintenance]);
 
-  const workshopBikes = bikes.filter(b => b.status === 'maintenance');
-  const roadmapBikes = [...bikes].sort((a, b) => getServiceStatus(b.id).days - getServiceStatus(a.id).days);
+  const workshopBikes = (bikes || []).filter(b => b.status === 'maintenance');
+  const roadmapBikes = useMemo(() => {
+    return [...(bikes || [])].sort((a, b) => getServiceStatus(b.id).days - getServiceStatus(a.id).days);
+  }, [bikes, maintenance]);
 
   const getSpecIcon = (spec: string) => {
     const s = spec.toLowerCase();
@@ -111,7 +113,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   };
 
   const filteredWorkshops = useMemo(() => {
-    let result = workshops.filter(w => {
+    let result = (workshops || []).filter(w => {
       const matchesSearch = w.name.toLowerCase().includes(workshopSearch.toLowerCase()) || 
                            w.specialization.some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
       const matchesCity = cityFilter === 'all' || w.city === cityFilter;
@@ -177,7 +179,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   };
 
-  const selectedBike = bikes.find(b => b.id === selectedBikeId);
+  const selectedBike = (bikes || []).find(b => b.id === selectedBikeId);
 
   return (
     <div className="w-full space-y-6">

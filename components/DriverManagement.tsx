@@ -1,18 +1,22 @@
+
 import React, { useState, useRef, useMemo } from 'react';
-import { Driver, Bike, Payment } from '../types';
+import { Driver, Bike, Payment, TrafficFine } from '../types';
 
 interface DriverManagementProps {
   drivers: Driver[];
   setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
   bikes: Bike[];
   payments: Payment[];
+  fines: TrafficFine[];
+  onAddFine: (fine: Omit<TrafficFine, 'id'>) => void;
   weeklyTarget: number;
 }
 
-const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, weeklyTarget }) => {
+const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, fines, onAddFine, weeklyTarget }) => {
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
+  const [showFineForm, setShowFineForm] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [verifyingContactId, setVerifyingContactId] = useState<string | null>(null);
@@ -31,6 +35,16 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     pdpExpiry: '',
     contactVerified: false,
     profilePictureUrl: ''
+  });
+
+  const [fineFormData, setFineFormData] = useState<Omit<TrafficFine, 'id'>>({
+    bikeId: '',
+    driverId: '',
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    noticeNumber: '',
+    description: '',
+    status: 'unpaid'
   });
 
   // Calculate weeks in current month to set an accurate target
@@ -61,23 +75,16 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     return totalPaidInMonth - totalDue;
   };
 
+  const getUnpaidFines = (driverId: string) => {
+    return fines
+      .filter(f => f.driverId === driverId && f.status === 'unpaid')
+      .reduce((sum, f) => sum + f.amount, 0);
+  };
+
   const getPaymentStatus = (driverId: string) => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    const totalPaidInMonth = payments
-      .filter(p => {
-        const pDate = new Date(p.date);
-        return p.driverId === driverId && 
-               pDate.getMonth() === currentMonth && 
-               pDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, p) => sum + p.amount, 0);
-    
-    const totalDue = getMonthlyDue();
-
-    if (totalPaidInMonth >= totalDue) return 'fully-paid';
+    const balance = getFullBalance(driverId);
+    if (balance >= 0) return 'fully-paid';
+    const totalPaidInMonth = getMonthlyDue() + balance;
     if (totalPaidInMonth > 0) return 'partial';
     return 'overdue';
   };
@@ -150,26 +157,49 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     }
   };
 
+  const handleFineSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAddFine(fineFormData);
+    setShowFineForm(null);
+    setFineFormData({
+      bikeId: '',
+      driverId: '',
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      noticeNumber: '',
+      description: '',
+      status: 'unpaid'
+    });
+  };
+
   const sendReminder = (driver: Driver) => {
     const balance = getFullBalance(driver.id);
+    const unpaidFineTotal = getUnpaidFines(driver.id);
     const bike = bikes.find(b => b.assignedDriverId === driver.id);
     const payStatus = getPaymentStatus(driver.id);
     
     let message = `Hello ${driver.name}, this is an official monthly payment update from MotoFleet Management. `;
     
-    if (payStatus === 'fully-paid') {
+    if (payStatus === 'fully-paid' && unpaidFineTotal === 0) {
       message += `\n\nYour account is currently in good standing. You have fully paid your R${getMonthlyDue()} target for this month. `;
       message += `Keep up the excellent work! Safe driving!`;
-    } else if (payStatus === 'partial') {
-      message += `\n\nYour account for this month is in partial arrears by R${Math.abs(balance)}. `;
-      message += `Target: R${getMonthlyDue()}. `;
-      if (bike) message += `\nVehicle: ${bike.licenseNumber}`;
-      message += `\n\nPlease settle the remaining amount as soon as possible.`;
     } else {
-      message += `\n\nYour account is currently OVERDUE by R${Math.abs(balance)}. `;
-      message += `No payments have been recorded for the current cycle (Target: R${getMonthlyDue()}). `;
+      if (payStatus === 'overdue') {
+        message += `\n\nYour account for this month is currently OVERDUE by R${Math.abs(balance)}. `;
+      } else if (payStatus === 'partial') {
+        message += `\n\nYour account for this month is in partial arrears by R${Math.abs(balance)}. `;
+      }
+      
+      if (unpaidFineTotal > 0) {
+        message += `\n\nIn addition, you have R${unpaidFineTotal} in unpaid traffic fines recorded in your name. `;
+      }
+
+      const totalDebt = Math.abs(balance) + unpaidFineTotal;
+      message += `\nTotal Outstanding: R${totalDebt}. `;
+      message += `Target Monthly Rental: R${getMonthlyDue()}. `;
+      
       if (bike) message += `\nVehicle: ${bike.licenseNumber}`;
-      message += `\n\nPlease ensure this amount is settled immediately to avoid service interruption.`;
+      message += `\n\nPlease ensure the outstanding balance is settled immediately to avoid service interruption. Contact us if you have already made payment.`;
     }
     
     const encodedMsg = encodeURIComponent(message);
@@ -294,6 +324,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
           const assignedBike = bikes.find(b => b.assignedDriverId === driver.id);
           const payStatus = getPaymentStatus(driver.id);
           const balance = getFullBalance(driver.id);
+          const unpaidFineTotal = getUnpaidFines(driver.id);
           const licStatus = getExpiryStatus(driver.licenseExpiry);
           const pdpStatus = getExpiryStatus(driver.pdpExpiry);
           const isVerifyingContact = verifyingContactId === driver.id;
@@ -342,12 +373,24 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   )}
                 </div>
                 
-                <button 
-                  onClick={() => { setEditingDriverId(driver.id); setFormData(driver); }}
-                  className="w-10 h-10 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all opacity-0 group-hover:opacity-100"
-                >
-                  ✏️
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => {
+                      setShowFineForm(driver.id);
+                      setFineFormData(prev => ({ ...prev, driverId: driver.id, bikeId: assignedBike?.id || '' }));
+                    }}
+                    className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                    title="Attach Fine"
+                  >
+                    🚔
+                  </button>
+                  <button 
+                    onClick={() => { setEditingDriverId(driver.id); setFormData(driver); }}
+                    className="w-10 h-10 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                  >
+                    ✏️
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center space-x-5 mb-8">
@@ -476,9 +519,14 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                   <div className="space-y-1.5 pt-1">
                     <div className="flex justify-between items-center text-[10px] font-black uppercase">
                        <span className="text-gray-400">Balance</span>
-                       <span className={balance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                         {balance >= 0 ? `+R${balance}` : `R${balance}`}
-                       </span>
+                       <div className="flex flex-col items-end">
+                         <span className={balance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                           {balance >= 0 ? `+R${balance}` : `R${balance}`}
+                         </span>
+                         {unpaidFineTotal > 0 && (
+                           <span className="text-red-400 text-[8px] font-black tracking-tight mt-0.5">Fines Owed: R{unpaidFineTotal}</span>
+                         )}
+                       </div>
                     </div>
                     {payStatus !== 'fully-paid' && (
                       <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
@@ -514,21 +562,82 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
               <button 
                 onClick={() => sendReminder(driver)}
                 className={`w-full text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all shadow-xl flex items-center justify-center group/btn active:scale-95 ${
-                  payStatus === 'overdue' ? 'bg-red-600 hover:bg-red-700 shadow-red-100' : 
+                  payStatus === 'overdue' || unpaidFineTotal > 0 ? 'bg-red-600 hover:bg-red-700 shadow-red-100' : 
                   payStatus === 'partial' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' :
                   'bg-gray-900 hover:bg-green-600 shadow-gray-200'
                 }`}
               >
                 <span className="mr-3 transition-transform group-hover/btn:scale-125">
-                  {payStatus === 'fully-paid' ? '💬' : '⚠️'}
+                  {payStatus === 'fully-paid' && unpaidFineTotal === 0 ? '💬' : '⚠️'}
                 </span> 
-                {payStatus === 'fully-paid' ? 'Contact via WhatsApp' : 
+                {payStatus === 'fully-paid' && unpaidFineTotal === 0 ? 'Contact via WhatsApp' : 
+                 unpaidFineTotal > 0 ? 'Send Fine & Arrears Alert' :
                  payStatus === 'partial' ? 'Send Arrears Alert' : 'Send Payment Warning'}
               </button>
             </div>
           );
         })}
       </div>
+
+      {showFineForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <form onSubmit={handleFineSubmit} className="bg-white p-8 md:p-10 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 animate-in zoom-in duration-200">
+            <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+               <div>
+                 <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Attach Fine</h3>
+                 <p className="text-[10px] text-red-500 font-black uppercase tracking-widest mt-1">Operator Liability Check</p>
+               </div>
+               <button type="button" onClick={() => setShowFineForm(null)} className="text-gray-400 hover:text-gray-900 text-4xl">&times;</button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Fine Notice No.</label>
+                <input 
+                  required 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                  value={fineFormData.noticeNumber} 
+                  onChange={e => setFineFormData({...fineFormData, noticeNumber: e.target.value})}
+                  placeholder="e.g. INF-2023-XX"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Amount (R)</label>
+                <input 
+                  type="number" 
+                  required 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                  value={fineFormData.amount || ''} 
+                  onChange={e => setFineFormData({...fineFormData, amount: Number(e.target.value)})}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Asset Assigned</label>
+                <select 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold"
+                  value={fineFormData.bikeId}
+                  onChange={e => setFineFormData({...fineFormData, bikeId: e.target.value})}
+                >
+                  <option value="">Select Vehicle...</option>
+                  {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Violation Description</label>
+                <input 
+                  required 
+                  className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold" 
+                  value={fineFormData.description} 
+                  onChange={e => setFineFormData({...fineFormData, description: e.target.value})}
+                  placeholder="e.g. Speeding 80 in 60 zone"
+                />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">Confirm Fine Assignment</button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
