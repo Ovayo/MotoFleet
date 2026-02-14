@@ -109,6 +109,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   };
 
   const collectionStats = useMemo(() => {
+    const CURRENT_WEEK = 4;
     const driverData = activeDrivers.map(d => {
       const total = filteredPayments.filter(p => p.driverId === d.id).reduce((acc, p) => acc + p.amount, 0);
       const target = d.weeklyTarget || weeklyTarget;
@@ -122,10 +123,14 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     const totalDueFleet = driverData.reduce((acc, d) => acc + d.due, 0);
     const totalCollected = driverData.reduce((acc, d) => acc + d.total, 0);
     const collectionRate = totalDueFleet > 0 ? Math.round((totalCollected / totalDueFleet) * 100) : 100;
-    const remainingDueMonth = Math.max(0, totalDueFleet - totalCollected);
+    
+    // Calculate weekly outstanding for active week (Simulated as Week 4)
+    const totalPaidWeek = payments.filter(p => p.weekNumber === CURRENT_WEEK).reduce((acc, p) => acc + p.amount, 0);
+    const totalDueWeek = activeDrivers.reduce((acc, d) => acc + (d.weeklyTarget || weeklyTarget), 0);
+    const remainingDueWeek = Math.max(0, totalDueWeek - totalPaidWeek);
 
-    return { totalArrears, overdueCount, collectionRate, driverData, remainingDueMonth };
-  }, [activeDrivers, filteredPayments, weeksInMonth, weeklyTarget]);
+    return { totalArrears, overdueCount, collectionRate, driverData, remainingDueWeek };
+  }, [activeDrivers, filteredPayments, weeksInMonth, weeklyTarget, payments]);
 
   const displayDrivers = useMemo(() => {
     const list = activeDrivers;
@@ -230,8 +235,8 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding (Month)</p>
-            <h3 className={`text-2xl font-black text-orange-600`}>R{collectionStats.remainingDueMonth.toLocaleString()}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding (Week)</p>
+            <h3 className={`text-2xl font-black text-orange-600`}>R{collectionStats.remainingDueWeek.toLocaleString()}</h3>
           </div>
           <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-xl">⌛</div>
         </div>

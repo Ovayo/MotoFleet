@@ -80,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
   return (
     <div className="space-y-6 md:space-y-10">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard title="Operator Payments" value={`R${totalRevenue.toLocaleString()}`} icon="💰" color="blue" />
+        <StatCard title="Total Operator Payments" value={`R${totalRevenue.toLocaleString()}`} icon="💰" color="blue" />
         <StatCard title="Net Profit" value={`R${netProfit.toLocaleString()}`} icon="📊" color="green" />
         <StatCard title="Fleet Strength" value={`${bikes.length} Units`} icon="🏍️" color="indigo" />
         <StatCard title="Maintenance" value={`R${totalExpenses.toLocaleString()}`} icon="🔧" color="red" />
