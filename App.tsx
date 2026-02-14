@@ -300,7 +300,7 @@ const App: React.FC = () => {
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'incidents':
-        return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onUpdateStatus={handleUpdateAccidentStatus} />;
+        return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onAddAccident={handleAddAccident} onUpdateStatus={handleUpdateAccidentStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
       case 'tracking':

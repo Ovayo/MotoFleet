@@ -1,21 +1,73 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AccidentReport, Bike, Driver } from '../types';
 
 interface AccidentLogProps {
   accidents: AccidentReport[];
   bikes: Bike[];
   drivers: Driver[];
+  onAddAccident: (report: Omit<AccidentReport, 'id'>) => void;
   onUpdateStatus: (id: string, status: AccidentReport['status']) => void;
 }
 
-const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, onUpdateStatus }) => {
+const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, onAddAccident, onUpdateStatus }) => {
   const [filter, setFilter] = useState<AccidentReport['status'] | 'all'>('all');
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const accidentFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [accidentFormData, setAccidentFormData] = useState<Omit<AccidentReport, 'id'>>({
+    bikeId: '',
+    driverId: '',
+    date: new Date().toISOString().split('T')[0],
+    location: '',
+    description: '',
+    status: 'reported',
+    thirdPartyDetails: '',
+    attachmentUrl: ''
+  });
 
   const filteredAccidents = useMemo(() => {
     return filter === 'all' ? accidents : accidents.filter(a => a.status === filter);
   }, [accidents, filter]);
+
+  const handleBikeChange = (bikeId: string) => {
+    const bike = bikes.find(b => b.id === bikeId);
+    setAccidentFormData(prev => ({
+      ...prev,
+      bikeId,
+      driverId: bike?.assignedDriverId || prev.driverId
+    }));
+  };
+
+  const handleAccidentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAccidentFormData(prev => ({ ...prev, attachmentUrl: reader.result as string }));
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accidentFormData.bikeId || !accidentFormData.driverId) {
+      alert("Please select both an asset and an operator.");
+      return;
+    }
+    onAddAccident(accidentFormData);
+    setShowAddForm(false);
+    setAccidentFormData({
+      bikeId: '',
+      driverId: '',
+      date: new Date().toISOString().split('T')[0],
+      location: '',
+      description: '',
+      status: 'reported',
+      thirdPartyDetails: '',
+      attachmentUrl: ''
+    });
+  };
 
   return (
     <div className="space-y-8 pb-10 max-w-6xl mx-auto">
@@ -24,16 +76,24 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
           <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Accident Registry</h2>
           <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Operational Safety & Insurance Tracking</p>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-2xl shadow-inner">
-          {(['all', 'reported', 'insurance-pending', 'resolved'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              {f.replace('-', ' ')}
-            </button>
-          ))}
+        <div className="flex items-center space-x-3 w-full md:w-auto">
+          <div className="hidden lg:flex bg-gray-100 p-1 rounded-2xl shadow-inner">
+            {(['all', 'reported', 'insurance-pending', 'resolved'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                {f.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="flex-1 md:flex-none bg-red-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95"
+          >
+            + Report Incident
+          </button>
         </div>
       </div>
 
@@ -108,10 +168,79 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
         )}
       </div>
 
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+           <form onSubmit={handleSubmit} className="bg-white rounded-[3rem] shadow-2xl max-w-2xl w-full p-10 space-y-8 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-6">
+                 <div>
+                   <h3 className="text-2xl font-black text-red-600 uppercase tracking-tight">Manual Incident Entry</h3>
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Official Fleet Incident Declaration</p>
+                 </div>
+                 <button type="button" onClick={() => setShowAddForm(false)} className="text-gray-300 hover:text-red-500 text-5xl leading-none">&times;</button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Asset (Bike)</label>
+                    <select 
+                      required 
+                      className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" 
+                      value={accidentFormData.bikeId} 
+                      onChange={e => handleBikeChange(e.target.value)}
+                    >
+                       <option value="">Select Asset...</option>
+                       {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Operator (Driver)</label>
+                    <select 
+                      required 
+                      className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" 
+                      value={accidentFormData.driverId} 
+                      onChange={e => setAccidentFormData({...accidentFormData, driverId: e.target.value})}
+                    >
+                       <option value="">Select Operator...</option>
+                       {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Incident Date</label>
+                    <input type="date" required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={accidentFormData.date} onChange={e => setAccidentFormData({...accidentFormData, date: e.target.value})} />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Specific Location</label>
+                    <input type="text" required placeholder="e.g. Cnr Main & 4th, Sandton" className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={accidentFormData.location} onChange={e => setAccidentFormData({...accidentFormData, location: e.target.value})} />
+                 </div>
+                 <div className="md:col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Describe the Incident</label>
+                    <textarea required placeholder="Briefly explain what happened..." className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold h-32 resize-none" value={accidentFormData.description} onChange={e => setAccidentFormData({...accidentFormData, description: e.target.value})} />
+                 </div>
+                 <div className="md:col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Third Party Details (Optional)</label>
+                    <input type="text" placeholder="Name, License Plate, Contact info" className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={accidentFormData.thirdPartyDetails} onChange={e => setAccidentFormData({...accidentFormData, thirdPartyDetails: e.target.value})} />
+                 </div>
+                 <div className="md:col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Incident Evidence (Photos)</label>
+                    <div className="relative">
+                       <input type="file" ref={accidentFileInputRef} className="hidden" accept="image/*" onChange={handleAccidentFileChange} />
+                       <button type="button" onClick={() => accidentFileInputRef.current?.click()} className={`w-full p-5 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center space-x-3 ${accidentFormData.attachmentUrl ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-red-400'}`}>
+                          <span>📸</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest">{accidentFormData.attachmentUrl ? 'Photos Attached' : 'Attach Scene Evidence'}</span>
+                       </button>
+                    </div>
+                 </div>
+              </div>
+
+              <button type="submit" className="w-full bg-red-600 text-white py-6 rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-red-200 hover:bg-red-700 transition-all active:scale-95">Commit Incident Report</button>
+           </form>
+        </div>
+      )}
+
       {viewingAttachment && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-6">
            <div className="max-w-4xl w-full bg-white rounded-[3rem] overflow-hidden flex flex-col animate-in zoom-in duration-300">
-             <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+             <div className="p-8 border-b border-gray-100 flex justify-between items-center">
                <h3 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">Scene Evidence Viewer</h3>
                <button onClick={() => setViewingAttachment(null)} className="text-gray-400 hover:text-gray-900 text-5xl leading-none">&times;</button>
              </div>
