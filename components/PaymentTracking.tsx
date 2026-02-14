@@ -141,6 +141,26 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     });
   }, [activeDrivers, filterArrearsOnly, collectionStats]);
 
+  const ledgerTotals = useMemo(() => {
+    let settled = 0;
+    let balance = 0;
+    let weeklyTargetSum = 0;
+
+    displayDrivers.forEach(driver => {
+      const monthlyTotal = [...Array(weeksInMonth)].reduce((acc, _, i) => 
+        acc + getWeeklyPaymentsForSlot(driver.id, i).reduce((a, b) => a + b.amount, 0), 0
+      );
+      const currentTarget = driver.weeklyTarget || weeklyTarget;
+      const monthlyDue = weeksInMonth * currentTarget;
+      
+      settled += monthlyTotal;
+      balance += (monthlyTotal - monthlyDue);
+      weeklyTargetSum += currentTarget;
+    });
+
+    return { settled, balance, weeklyTargetSum };
+  }, [displayDrivers, weeksInMonth, weeklyTarget, filteredPayments]);
+
   const handleCellClick = (driverId: string, weekIndex: number, currentAmount: number) => {
     const driver = drivers.find(d => d.id === driverId);
     const target = driver?.weeklyTarget || weeklyTarget;
@@ -385,6 +405,22 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                 );
               })}
             </tbody>
+            <tfoot className="bg-gray-50 border-t-2 border-gray-100">
+              <tr className="font-black text-gray-900 text-[10px] uppercase tracking-widest">
+                <td className="px-8 py-6 sticky left-0 bg-gray-50 z-10">Fleet Cumulative</td>
+                {[...Array(weeksInMonth)].map((_, i) => <td key={i} className="px-4 py-6"></td>)}
+                <td className="px-8 py-6 text-right">R{ledgerTotals.settled.toLocaleString()}</td>
+                <td className={`px-8 py-6 text-right ${ledgerTotals.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {ledgerTotals.balance >= 0 ? `+R${ledgerTotals.balance.toLocaleString()}` : `R${ledgerTotals.balance.toLocaleString()}`}
+                </td>
+                <td className="px-8 py-6 text-center bg-gray-100/50">
+                  <div className="flex flex-col items-center">
+                    <span className="text-indigo-600 text-sm">R{ledgerTotals.weeklyTargetSum.toLocaleString()}</span>
+                    <span className="text-[7px] text-gray-400 mt-1">Total Weekly Demand</span>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       ) : (
