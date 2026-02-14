@@ -106,7 +106,8 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   const collectionStats = useMemo(() => {
     const driverData = activeDrivers.map(d => {
       const total = filteredPayments.filter(p => p.driverId === d.id).reduce((acc, p) => acc + p.amount, 0);
-      const due = weeksInMonth * (d.weeklyTarget || weeklyTarget);
+      const target = d.weeklyTarget || weeklyTarget;
+      const due = weeksInMonth * target;
       return { id: d.id, total, due, balance: total - due };
     });
 
@@ -289,6 +290,8 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                   getWeeklyPaymentsForSlot(driver.id, i).reduce((a, b) => a + b.amount, 0)
                 );
                 const monthlyTotal = weeklyPaidSums.reduce((a, b) => a + b, 0);
+                
+                // CRITICAL: Explicitly use driver's individual target with fleet fallback
                 const currentTarget = driver.weeklyTarget || weeklyTarget;
                 const monthlyDue = weeksInMonth * currentTarget;
                 const monthlyBalance = monthlyTotal - monthlyDue;
@@ -326,9 +329,12 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                       {monthlyBalance >= 0 ? `+R${monthlyBalance}` : `R${monthlyBalance}`}
                     </td>
                     <td className="px-8 py-6 text-center bg-gray-50/30">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black border ${currentTarget === 600 ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
-                        R{currentTarget}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black border ${driver.weeklyTarget ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          R{currentTarget}
+                        </span>
+                        {driver.weeklyTarget && <span className="text-[7px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Driver Specific</span>}
+                      </div>
                     </td>
                   </tr>
                 );
