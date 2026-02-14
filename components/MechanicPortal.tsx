@@ -113,22 +113,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   }, [bikes, maintenance]);
 
-  const getSpecIcon = (spec: string) => {
-    if (!spec) return '🔹';
-    const s = spec.toLowerCase();
-    if (s.includes('hero')) return '🦸';
-    if (s.includes('honda')) return '🇯🇵';
-    if (s.includes('engine') || s.includes('rebuild')) return '⚙️';
-    if (s.includes('tyre') || s.includes('wheel')) return '🛞';
-    if (s.includes('service') || s.includes('routine')) return '🛠️';
-    if (s.includes('oil') || s.includes('lube')) return '🛢️';
-    if (s.includes('sprocket') || s.includes('chain')) return '🔗';
-    if (s.includes('electric') || s.includes('battery')) return '⚡';
-    if (s.includes('brake')) return '🛑';
-    if (s.includes('body') || s.includes('fairing')) return '🛡️';
-    return '🔹';
-  };
-
   const filteredWorkshops = useMemo(() => {
     let result = (workshops || []).filter(w => {
       const matchesSearch = w.name?.toLowerCase().includes(workshopSearch.toLowerCase()) || 
@@ -175,19 +159,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     closeWorkshopForm();
   };
 
-  const openEditWorkshop = (workshop: Workshop) => {
-    setEditingWorkshopId(workshop.id);
-    setWorkshopFormData({
-      name: workshop.name || '',
-      city: workshop.city || 'JHB',
-      location: workshop.location || '',
-      contact: workshop.contact || '',
-      specialization: workshop.specialization || [],
-      rating: workshop.rating || 5
-    });
-    setShowWorkshopForm(true);
-  };
-
   const closeWorkshopForm = () => {
     setShowWorkshopForm(false);
     setEditingWorkshopId(null);
@@ -201,12 +172,24 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   };
 
+  const openEditWorkshop = (workshop: Workshop) => {
+    setEditingWorkshopId(workshop.id);
+    setWorkshopFormData({
+      name: workshop.name,
+      city: workshop.city,
+      location: workshop.location,
+      contact: workshop.contact,
+      specialization: workshop.specialization,
+      rating: workshop.rating
+    });
+    setShowWorkshopForm(true);
+  };
+
   const handleAssignWorkshop = (bikeId: string, workshopId: string) => {
     setBikes(prev => prev.map(b => b.id === bikeId ? { ...b, assignedWorkshopId: workshopId === 'none' ? undefined : workshopId } : b));
     setAssigningWorkshopBikeId(null);
   };
 
-  // Normalization helper for WhatsApp links
   const formatForWhatsApp = (phone: string) => {
     let cleaned = phone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -215,110 +198,128 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     return cleaned;
   };
 
-  const selectedBike = (bikes || []).find(b => b.id === selectedBikeId);
-
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-8 relative pb-10">
+      {/* Background Decor for Premium SaaS feel */}
+      <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-amber-500/5 blur-[150px] pointer-events-none -z-10"></div>
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 blur-[150px] pointer-events-none -z-10"></div>
+
+      {/* High-Impact Stat Strip */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-amber-100 flex items-center justify-between">
-           <div>
-             <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">In Workshop</p>
-             <h3 className="text-3xl font-black text-gray-800">{workshopBikes.length}</h3>
-           </div>
-           <div className="text-3xl">🛠️</div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-red-100 flex items-center justify-between">
-           <div>
-             <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Service Overdue</p>
-             <h3 className="text-3xl font-black text-gray-800">{bikes.filter(b => getServiceStatus(b.id).status === 'overdue').length}</h3>
-           </div>
-           <div className="text-3xl">🛑</div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-blue-100 flex items-center justify-between">
-           <div>
-             <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Active Warranties</p>
-             <h3 className="text-3xl font-black text-gray-800">{activeWarranties.length}</h3>
-           </div>
-           <div className="text-3xl">🛡️</div>
-        </div>
+        {[
+          { label: 'Asset Grounded', value: workshopBikes.length, icon: '🛠️', color: 'amber' },
+          { label: 'Registry Overdue', value: bikes.filter(b => getServiceStatus(b.id).status === 'overdue').length, icon: '🛑', color: 'red' },
+          { label: 'Active Coverage', value: activeWarranties.length, icon: '🛡️', color: 'blue' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white/70 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-sm border border-white/50 flex items-center justify-between group hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
+            <div>
+              <p className={`text-[10px] font-black text-${stat.color}-500 uppercase tracking-[0.2em] mb-2`}>{stat.label}</p>
+              <h3 className="text-4xl font-black text-gray-900">{stat.value}</h3>
+            </div>
+            <div className="text-4xl grayscale group-hover:grayscale-0 transition-all duration-500">{stat.icon}</div>
+          </div>
+        ))}
         <button 
           onClick={() => setShowLogForm(true)}
-          className="bg-amber-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all flex flex-col items-center justify-center space-y-2 py-6"
+          className="bg-gray-900 text-white rounded-[2.5rem] p-8 font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-gray-200 hover:bg-black hover:scale-[1.02] transition-all flex flex-col items-center justify-center space-y-3"
         >
-          <span className="text-2xl">➕</span>
-          <span>Open Job Card</span>
+          <span className="text-2xl">⚡</span>
+          <span>Open Technical Card</span>
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit">
+      {/* Navigation Blade */}
+      <div className="flex flex-wrap gap-2 bg-gray-200/50 backdrop-blur-md p-1.5 rounded-2xl w-fit border border-white/40 shadow-inner">
         {(['queue', 'roadmap', 'warranties', 'workshops'] as const).map(tab => (
           <button 
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${activeTab === tab ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-500 hover:text-gray-800'}`}
           >
             {tab === 'workshops' ? 'Partner Directory' : tab}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <div className="xl:col-span-2 space-y-6">
           {activeTab === 'queue' && (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-              <div className="p-6 border-b border-gray-100 bg-gray-50/30">
-                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Active Workshop Queue</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-6">
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">Fleet Deployment Pipeline</h3>
+                <span className="text-[9px] font-bold text-amber-600 bg-amber-50/50 px-3 py-1 rounded-full border border-amber-100/50">Maintenance Required</span>
               </div>
-              <div className="divide-y divide-gray-100">
+              
+              <div className="grid grid-cols-1 gap-6">
                 {workshopBikes.length === 0 ? (
-                  <div className="p-20 text-center">
-                    <div className="text-4xl mb-4">✨</div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Workspace Clear</p>
-                    <p className="text-xs text-gray-400 mt-1">All bikes are currently operational.</p>
+                  <div className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-[3rem] py-32 text-center shadow-sm">
+                    <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Technical Registry Clear — Zero Latency</p>
                   </div>
                 ) : (
                   workshopBikes.map(bike => {
-                    const assignedWorkshop = workshops.find(w => w.id === bike.assignedWorkshopId);
+                    const workshop = workshops.find(w => w.id === bike.assignedWorkshopId);
                     return (
-                      <div key={bike.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-amber-50/20 transition-colors">
-                        <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                           <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-xl font-black">
-                              {bike.licenseNumber.substring(0,2)}
-                           </div>
-                           <div>
-                              <h4 className="font-black text-gray-800 uppercase tracking-tight">{bike.licenseNumber}</h4>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
-                              <div className="mt-1 flex items-center space-x-2">
-                                {assignedWorkshop ? (
-                                  <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Dispatched To: {assignedWorkshop.name}</p>
-                                ) : (
-                                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest italic">Pending Assignment</p>
-                                )}
+                      <div key={bike.id} className="bg-white/80 backdrop-blur-3xl border border-white/60 rounded-[3rem] p-8 md:p-10 shadow-sm hover:shadow-2xl hover:shadow-gray-100 transition-all duration-500 group overflow-hidden relative">
+                        {/* Decorative background element */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-[4rem] -z-10 group-hover:bg-amber-50/30 transition-colors duration-500"></div>
+                        
+                        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                          {/* Asset Info */}
+                          <div className="flex items-center space-x-8 w-full md:w-auto">
+                            <div className="w-20 h-20 rounded-[2rem] bg-gray-900 flex items-center justify-center text-3xl shadow-2xl shadow-gray-200 group-hover:rotate-6 transition-transform duration-500">🏍️</div>
+                            <div className="min-w-0">
+                              <h4 className="font-black text-gray-900 text-3xl uppercase leading-none tracking-tighter mb-2">{bike.licenseNumber}</h4>
+                              <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{bike.makeModel}</p>
+                            </div>
+                          </div>
+
+                          {/* Dispatch / Workshop Details Section */}
+                          <div className="flex-1 w-full">
+                            {workshop ? (
+                              <div className="flex flex-col md:flex-row items-center gap-8 md:justify-end">
+                                <div className="text-center md:text-right border-l-0 md:border-l-2 border-gray-100 md:pl-10">
+                                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] mb-2 flex items-center justify-center md:justify-end">
+                                    <span className="mr-2">🏪</span> Operational Location
+                                  </p>
+                                  <h5 className="text-xl font-black text-gray-900 uppercase leading-none truncate mb-1">{workshop.name}</h5>
+                                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{workshop.location}</p>
+                                </div>
+                                <div className="flex items-center space-x-3 shrink-0">
+                                  <button 
+                                    onClick={() => window.open(`tel:${workshop.contact}`)}
+                                    className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center hover:bg-black hover:scale-110 transition-all shadow-xl shadow-blue-100"
+                                    title="Call Hub"
+                                  >
+                                    📞
+                                  </button>
+                                  <button 
+                                    onClick={() => window.open(`https://wa.me/${formatForWhatsApp(workshop.contact)}`, '_blank')}
+                                    className="w-14 h-14 rounded-2xl bg-green-500 text-white flex items-center justify-center hover:bg-black hover:scale-110 transition-all shadow-xl shadow-green-100"
+                                    title="WhatsApp Hub"
+                                  >
+                                    💬
+                                  </button>
+                                  <button 
+                                    onClick={() => setAssigningWorkshopBikeId(bike.id)}
+                                    className="px-6 py-4 rounded-2xl border border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-widest hover:border-amber-400 hover:text-amber-500 transition-all"
+                                  >
+                                    Transfer
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex justify-center md:justify-end">
                                 <button 
                                   onClick={() => setAssigningWorkshopBikeId(bike.id)}
-                                  className="text-[8px] font-black text-blue-500 hover:underline uppercase"
+                                  className="w-full md:w-auto bg-amber-500 text-white px-12 py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.25em] shadow-2xl shadow-amber-100 hover:bg-amber-600 hover:scale-105 active:scale-95 transition-all flex items-center justify-center space-x-4 relative group/btn overflow-hidden"
                                 >
-                                  {assignedWorkshop ? 'Modify' : 'Assign Workshop'}
+                                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700"></div>
+                                  <span className="text-xl">🚀</span>
+                                  <span>Dispatch Asset</span>
                                 </button>
                               </div>
-                           </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                           <button 
-                            onClick={() => {
-                              setNewLog({ ...newLog, bikeId: bike.id, serviceType: 'repair', performedBy: assignedWorkshop?.name || 'In-House Workshop' });
-                              setShowLogForm(true);
-                            }}
-                            className="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                           >
-                             Log Repair
-                           </button>
-                           <button 
-                            onClick={() => setSelectedBikeId(bike.id)}
-                            className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[9px] font-black uppercase tracking-widest transition-colors"
-                           >
-                             View History
-                           </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -329,359 +330,346 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
           )}
 
           {activeTab === 'roadmap' && (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-               <div className="p-6 border-b border-gray-100 bg-gray-50/30">
-                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Fleet Service Roadmap</h3>
+            <div className="bg-white/80 backdrop-blur-3xl rounded-[3rem] border border-white/60 shadow-sm overflow-hidden">
+               <div className="p-10 border-b border-gray-50 flex items-center justify-between">
+                <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.3em]">Preventative Roadmap</h3>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="divide-y divide-gray-50">
                 {roadmapBikes.map(bike => {
-                  const status = getServiceStatus(bike.id);
-                  
-                  return (
-                    <div key={bike.id} className="group relative p-4 rounded-2xl border border-gray-100 bg-gray-50/50 flex flex-col justify-between transition-all hover:border-amber-200 hover:bg-amber-50/20 cursor-default">
-                       <div className="flex justify-between items-start mb-4">
-                          <div>
-                             <h4 className="font-black text-gray-800 text-sm">{bike.licenseNumber}</h4>
-                             <p className="text-[9px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                            status.status === 'overdue' ? 'bg-red-100 text-red-600' :
-                            status.status === 'due' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
-                          }`}>
-                            {status.status}
-                          </span>
-                       </div>
-                       <div className="space-y-2">
-                          <div className="flex justify-between text-[10px]">
-                             <span className="text-gray-400 font-bold uppercase">Last Service</span>
-                             <span className="text-gray-800 font-black">{status.lastDate}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                             <div 
-                              className={`h-full transition-all ${status.status === 'overdue' ? 'bg-red-500' : status.status === 'due' ? 'bg-amber-500' : 'bg-green-500'}`} 
-                              style={{ width: `${Math.min(100, (status.days / 90) * 100)}%` }}
-                             ></div>
-                          </div>
-                       </div>
-                    </div>
-                  )
+                   const status = getServiceStatus(bike.id);
+                   return (
+                     <div key={bike.id} className="p-8 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                        <div className="flex items-center space-x-8">
+                           <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-2xl shadow-sm ${
+                             status.status === 'overdue' ? 'bg-red-50 text-red-600' : 
+                             status.status === 'due' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
+                           }`}>
+                             {status.status === 'overdue' ? '🚨' : status.status === 'due' ? '⚠️' : '✅'}
+                           </div>
+                           <div>
+                              <h4 className="font-black text-gray-900 text-xl uppercase leading-none mb-1.5">{bike.licenseNumber}</h4>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.15em]">Hub Visit: {status.lastDate}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className={`text-3xl font-black ${
+                             status.status === 'overdue' ? 'text-red-600' : 
+                             status.status === 'due' ? 'text-amber-600' : 'text-green-600'
+                           }`}>{status.days} Days</p>
+                           <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest">In Operation</p>
+                        </div>
+                     </div>
+                   );
                 })}
               </div>
             </div>
           )}
 
-          {activeTab === 'workshops' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-left-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm">
-                <div className="relative flex-1">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-                   <input 
-                    type="text" 
-                    placeholder="Search workshop or specialization..." 
-                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all"
-                    value={workshopSearch}
-                    onChange={(e) => setWorkshopSearch(e.target.value)}
-                   />
-                </div>
-                <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
-                  {(['all', 'JHB', 'CTN', 'EL'] as const).map(c => (
-                    <button 
-                      key={c}
-                      onClick={() => setCityFilter(c)}
-                      className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${cityFilter === c ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
-                  {(['rating', 'name'] as const).map(s => (
-                    <button 
-                      key={s}
-                      onClick={() => setSortBy(s)}
-                      className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'}`}
-                    >
-                      Sort: {s}
-                    </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => setShowWorkshopForm(true)}
-                  className="bg-amber-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all shrink-0 active:scale-95"
-                >
-                  + Add Workshop
-                </button>
+          {activeTab === 'warranties' && (
+            <div className="bg-white/80 backdrop-blur-3xl rounded-[3rem] border border-white/60 shadow-sm overflow-hidden">
+               <div className="p-10 border-b border-gray-50">
+                <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.3em]">Technical Coverage</h3>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {filteredWorkshops.map(w => {
-                   const primarySpec = (w.specialization || [])[0];
-                   const otherSpecs = (w.specialization || []).slice(1);
-                   const isTopRated = (w.rating || 0) >= 4.7;
-                   
-                   return (
-                     <div key={w.id} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-2xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
-                        {isTopRated && (
-                          <div className="absolute top-0 right-0">
-                             <div className="bg-amber-50 text-amber-600 px-6 py-2 rounded-bl-3xl font-black text-[9px] uppercase tracking-widest border-b border-l border-amber-100 shadow-sm">
-                               ★ Top Rated Partner
-                             </div>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between items-start mb-6">
-                           <div className="flex items-center space-x-5">
-                              <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-[1.5rem] flex items-center justify-center text-3xl shadow-inner group-hover:scale-105 transition-transform">🏪</div>
-                              <div className="min-w-0">
-                                 <h4 className="font-black text-gray-900 uppercase tracking-tight text-lg truncate leading-tight">{w.name}</h4>
-                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5 flex items-center">
-                                    <span className="mr-2">📍</span>
-                                    {w.location} • {w.city}
-                                 </p>
-                              </div>
+              <div className="divide-y divide-gray-50">
+                {activeWarranties.length === 0 ? (
+                  <div className="py-32 text-center">
+                    <p className="text-gray-300 font-black uppercase tracking-[0.3em] text-[10px]">No active warranties in registry</p>
+                  </div>
+                ) : (
+                  activeWarranties.map(w => {
+                    const bike = bikes.find(b => b.id === w.bikeId);
+                    return (
+                      <div key={w.id} className="p-8 flex items-center justify-between">
+                         <div className="flex items-center space-x-8">
+                           <div className="w-16 h-16 rounded-[1.5rem] bg-blue-50 text-blue-600 flex items-center justify-center text-2xl shadow-sm">🛡️</div>
+                           <div>
+                              <h4 className="font-black text-gray-900 text-xl uppercase leading-none mb-1.5">{w.description}</h4>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.15em]">Linked Asset: {bike?.licenseNumber}</p>
                            </div>
-                           <div className="flex flex-col items-end gap-2 shrink-0 pt-2">
-                             <div className="bg-white px-3 py-1 rounded-xl border border-gray-50 shadow-sm flex items-center text-amber-500 font-black text-sm">
-                                <span className="mr-1 text-xs">★</span>
-                                <span>{(w.rating || 0).toFixed(1)}</span>
-                             </div>
-                             <div className="flex items-center gap-1.5">
-                                <button 
-                                  onClick={() => openEditWorkshop(w)}
-                                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100"
-                                  title="Edit Workshop"
-                                >
-                                  ✏️
-                                </button>
-                                <button 
-                                  onClick={() => onDeleteWorkshop(w.id)}
-                                  className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                  title="Remove Partner"
-                                >
-                                  🗑️
-                                </button>
-                             </div>
-                           </div>
-                        </div>
-
-                        <div className="space-y-4 mb-8">
-                           {/* Primary Specialization Highlight - PROMINENT */}
-                           {primarySpec && (
-                             <div className="bg-amber-600 p-5 rounded-[2rem] text-white shadow-xl shadow-amber-100 flex items-center justify-between group-hover:translate-x-1 transition-transform border-4 border-amber-500/30">
-                                <div className="flex items-center space-x-4">
-                                   <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl backdrop-blur-md">
-                                     {getSpecIcon(primarySpec)}
-                                   </div>
-                                   <div>
-                                      <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">Technical Focus</p>
-                                      <p className="text-sm font-black uppercase tracking-tight">{primarySpec}</p>
-                                   </div>
-                                </div>
-                                <span className="text-[10px] font-black bg-white/10 px-3 py-1 rounded-full border border-white/20">SPECIALIST</span>
-                             </div>
-                           )}
-
-                           <div className="flex flex-wrap gap-2">
-                             {otherSpecs.map((s, i) => (
-                               <div key={i} className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-gray-100 hover:bg-white hover:border-amber-200 transition-colors">
-                                 <span className="text-base">{getSpecIcon(s)}</span>
-                                 <span>{s}</span>
-                               </div>
-                             ))}
-                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-6 border-t border-gray-50">
-                          <a 
-                            href={`tel:${w.contact}`}
-                            className="flex-1 flex items-center justify-center space-x-3 py-4 bg-amber-50 text-amber-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-95"
-                          >
-                            <span>📞</span>
-                            <span>Direct Dial</span>
-                          </a>
-                          <a 
-                            href={`https://wa.me/${formatForWhatsApp(w.contact || '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 flex items-center justify-center space-x-3 py-4 bg-green-50 text-green-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-600 hover:text-white transition-all shadow-sm active:scale-95"
-                          >
-                            <span>💬</span>
-                            <span>WhatsApp</span>
-                          </a>
-                        </div>
-                     </div>
-                   );
-                 })}
-                 {filteredWorkshops.length === 0 && (
-                   <div className="col-span-full py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200">
-                      <div className="text-4xl mb-4">🔍</div>
-                      <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">No workshops match your criteria</p>
-                      <button onClick={() => {setWorkshopSearch(''); setCityFilter('all');}} className="mt-4 text-amber-600 font-black text-[10px] uppercase tracking-widest hover:underline">Clear all filters</button>
-                   </div>
-                 )}
+                         </div>
+                         <div className="text-right">
+                            <p className="text-3xl font-black text-blue-600">{w.remainingDays} Days</p>
+                            <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest">Remaining</p>
+                         </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
 
-          {activeTab === 'warranties' && ( activeWarranties.length > 0 ? (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
-               <div className="p-6 border-b border-gray-100 bg-gray-50/30">
-                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Active Mechanical Guarantees</h3>
+          {activeTab === 'workshops' && (
+            <div className="space-y-8">
+               <div className="bg-white/80 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white/60 shadow-sm space-y-6">
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 relative group">
+                       <span className="absolute left-6 top-1/2 -translate-y-1/2 opacity-30 text-xl">🔍</span>
+                       <input 
+                        type="text" 
+                        placeholder="Search partners by name or technical specialization..."
+                        className="w-full pl-16 pr-8 py-5 bg-gray-50 border-2 border-transparent rounded-[2rem] outline-none focus:bg-white focus:border-amber-400/30 transition-all text-sm font-bold shadow-inner"
+                        value={workshopSearch}
+                        onChange={(e) => setWorkshopSearch(e.target.value)}
+                       />
+                    </div>
+                    <div className="flex gap-4">
+                       <select 
+                        className="bg-gray-50 border-none px-8 py-5 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] outline-none shadow-inner appearance-none cursor-pointer"
+                        value={cityFilter}
+                        onChange={(e) => setCityFilter(e.target.value as any)}
+                       >
+                         <option value="all">Global Hubs</option>
+                         <option value="JHB">Johannesburg</option>
+                         <option value="CTN">Cape Town</option>
+                         <option value="EL">East London</option>
+                       </select>
+                       <button 
+                        onClick={() => setShowWorkshopForm(true)}
+                        className="bg-gray-900 text-white px-10 py-5 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-gray-200 hover:scale-105 transition-all"
+                       >
+                         + New Partner
+                       </button>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {filteredWorkshops.map(workshop => (
+                    <div key={workshop.id} className="bg-white/90 backdrop-blur-3xl p-10 rounded-[4rem] border border-white/80 shadow-sm group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                       <div className="flex justify-between items-start mb-8">
+                          <div className="flex items-center space-x-6">
+                             <div className="w-20 h-20 rounded-[2.5rem] bg-gray-50 flex items-center justify-center text-4xl group-hover:bg-amber-400 group-hover:text-white transition-all duration-700 shadow-inner">
+                               🏪
+                             </div>
+                             <div>
+                                <h4 className="font-black text-gray-900 text-2xl uppercase leading-tight tracking-tighter">{workshop.name}</h4>
+                                <div className="flex items-center mt-2 space-x-3">
+                                  <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase tracking-widest">{workshop.city}</span>
+                                  <div className="flex text-xs">
+                                    {[...Array(5)].map((_, i) => (
+                                      <span key={i} className={i < (workshop.rating || 0) ? 'text-amber-400' : 'text-gray-200'}>★</span>
+                                    ))}
+                                  </div>
+                                </div>
+                             </div>
+                          </div>
+                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button onClick={() => openEditWorkshop(workshop)} className="p-3 text-gray-400 hover:text-blue-600 transition-colors">✏️</button>
+                             <button onClick={() => onDeleteWorkshop(workshop.id)} className="p-3 text-gray-400 hover:text-red-600 transition-colors">🗑️</button>
+                          </div>
+                       </div>
+
+                       <div className="space-y-6 mb-10">
+                          <div className="p-5 bg-gray-50 rounded-3xl flex items-center space-x-4 border border-gray-100/50 shadow-inner">
+                             <span className="text-xl">📍</span>
+                             <span className="text-xs font-bold text-gray-600 uppercase truncate tracking-tight">{workshop.location}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                             {(workshop.specialization || []).map((spec, i) => (
+                               <span key={i} className="px-5 py-2 bg-white/50 text-gray-400 rounded-full text-[9px] font-black uppercase border border-gray-100/60 shadow-sm">
+                                 {spec}
+                               </span>
+                             ))}
+                          </div>
+                       </div>
+
+                       <button 
+                        onClick={() => window.open(`tel:${workshop.contact}`)}
+                        className="w-full bg-gray-900 text-white py-6 rounded-[2.5rem] font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all shadow-2xl shadow-gray-200 active:scale-95"
+                       >
+                         Secure Comms Channel
+                       </button>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Rail Info Panel */}
+        <div className="space-y-10">
+           <div className="bg-gray-900 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden group">
+              <div className="absolute -right-10 -bottom-10 text-9xl opacity-5 group-hover:rotate-12 transition-transform duration-700">🔧</div>
+              <div className="relative z-10">
+                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] mb-10">Operational Pulse</h4>
+                <div className="space-y-8">
+                   <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-5xl font-black">{workshopBikes.length}</p>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mt-2">Active Service Load</p>
+                      </div>
+                      <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
+                         <div className="bg-amber-500 h-full w-[65%]"></div>
+                      </div>
+                   </div>
+                   <div className="flex items-center justify-between pt-10 border-t border-white/10">
+                      <div>
+                        <p className="text-4xl font-black">R{maintenance.reduce((acc, m) => acc + (m.cost || 0), 0).toLocaleString()}</p>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mt-2">Lifecycle Investment</p>
+                      </div>
+                      <span className="text-4xl filter invert opacity-30">💰</span>
+                   </div>
+                </div>
               </div>
-              <div className="divide-y divide-gray-100">
-                {activeWarranties.map(w => {
-                    const bike = bikes.find(b => b.id === w.bikeId);
-                    return (
-                      <div key={w.id} className="p-6 flex items-center justify-between hover:bg-blue-50/20 transition-colors">
-                        <div className="flex items-center space-x-4">
-                           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">🛡️</div>
+           </div>
+
+           <div className="bg-white/80 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white/60 shadow-sm relative overflow-hidden">
+              <div className="relative z-10">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-8">Preferred Partners</h4>
+                <div className="space-y-6">
+                   {workshops.slice(0, 4).map(w => (
+                     <div key={w.id} className="flex items-center justify-between group/ws cursor-pointer">
+                        <div className="flex items-center space-x-5">
+                           <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-xl group-hover/ws:bg-amber-500 group-hover/ws:text-white transition-all shadow-inner">🏪</div>
                            <div>
-                              <h4 className="font-black text-gray-800 text-sm uppercase leading-tight">{w.description}</h4>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase">{bike?.licenseNumber} • {w.performedBy}</p>
+                              <p className="text-sm font-black uppercase tracking-tighter text-gray-900 group-hover/ws:translate-x-1 transition-transform">{w.name}</p>
+                              <p className="text-[9px] text-gray-400 uppercase font-bold">{w.city}</p>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-blue-600 font-black text-lg leading-tight">{w.remainingDays} Days</p>
-                           <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Left on coverage</p>
+                          <span className="text-[10px] font-black text-amber-500">★{w.rating}</span>
                         </div>
-                      </div>
-                    )
-                  })
-                }
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-24 text-center animate-in fade-in slide-in-from-left-4">
-               <div className="text-4xl mb-4">🛡️</div>
-               <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest italic">No active mechanical guarantees in the system</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-6">
-           {selectedBike ? (
-             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 animate-in slide-in-from-right-4">
-                <div className="flex justify-between items-start mb-8">
-                   <div>
-                      <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">{selectedBike.licenseNumber}</h3>
-                      <p className="text-xs text-blue-500 font-black uppercase tracking-widest">{selectedBike.makeModel}</p>
-                   </div>
-                   <button onClick={() => setSelectedBikeId(null)} className="text-gray-300 hover:text-gray-600 text-3xl leading-none transition-colors">&times;</button>
-                </div>
-
-                <div className="space-y-6">
-                   <div>
-                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2 mb-4">Historical Workshop Logs</h4>
-                      <div className="space-y-3">
-                         {maintenance.filter(m => m.bikeId === selectedBikeId).length === 0 ? (
-                           <p className="text-center py-10 text-gray-300 text-xs italic">No job cards found for this asset.</p>
-                         ) : (
-                           maintenance
-                            .filter(m => m.bikeId === selectedBikeId)
-                            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                            .map(m => (
-                              <div key={m.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                                 <p className="text-xs font-black text-gray-800 uppercase leading-tight">{m.description}</p>
-                                 <div className="flex justify-between items-center mt-2">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase">{m.date} • {m.serviceType}</span>
-                                    <span className="text-[10px] font-black text-gray-700">R{m.cost}</span>
-                                 </div>
-                              </div>
-                            ))
-                         )}
-                      </div>
-                   </div>
-                   <button 
-                    onClick={() => {
-                      setNewLog({...newLog, bikeId: selectedBikeId});
-                      setShowLogForm(true);
-                    }}
-                    className="w-full py-4 bg-amber-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95"
-                   >
-                     Initiate New Job Card
-                   </button>
-                </div>
-             </div>
-           ) : (
-             <div className="bg-amber-50/50 rounded-[2.5rem] border border-dashed border-amber-200 p-10 text-center flex flex-col items-center justify-center min-h-[400px]">
-                <div className="w-20 h-20 bg-white rounded-[2rem] shadow-xl shadow-amber-900/5 flex items-center justify-center text-4xl mb-6">⚙️</div>
-                <h4 className="text-sm font-black text-amber-900 uppercase tracking-widest">Asset Diagnostics</h4>
-                <p className="text-xs text-amber-700/60 mt-2 max-w-[200px] font-medium leading-relaxed">Select a motorcycle from the queue or roadmap to view full service telemetry and log evidence.</p>
-             </div>
-           )}
-        </div>
-      </div>
-
-      {/* Workshop Assignment Modal */}
-      {assigningWorkshopBikeId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-8 md:p-10 animate-in zoom-in duration-200">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Assign Workshop</h3>
-                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Select Service Partner</p>
-                </div>
-                <button onClick={() => setAssigningWorkshopBikeId(null)} className="text-3xl text-gray-300 hover:text-gray-600">&times;</button>
-              </div>
-              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
-                 {workshops.filter(w => {
-                    const bike = bikes.find(b => b.id === assigningWorkshopBikeId);
-                    return bike ? w.city === bike.city : true;
-                 }).map(w => (
-                   <button 
-                    key={w.id} 
-                    onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, w.id)}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 hover:bg-amber-50 hover:border-amber-200 transition-all text-left group"
-                   >
-                     <div className="flex items-center space-x-4">
-                       <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-lg">🛠️</div>
-                       <div>
-                         <span className="font-bold text-gray-800 block uppercase text-xs">{w.name}</span>
-                         <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">{(w.specialization || [])[0]}</span>
-                       </div>
                      </div>
-                     <span className="text-amber-500 font-black text-[10px]">★{(w.rating || 0).toFixed(1)}</span>
-                   </button>
-                 ))}
-                 <button onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, 'none')} className="w-full p-4 rounded-2xl border border-dashed border-gray-200 text-gray-400 font-bold hover:bg-gray-50 uppercase text-[10px] tracking-widest mt-4">In-House / Other</button>
+                   ))}
+                </div>
+                <button 
+                  onClick={() => setActiveTab('workshops')}
+                  className="w-full mt-10 py-5 bg-gray-50 rounded-[2rem] text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-all border border-gray-100/50"
+                >
+                  Global Registry
+                </button>
               </div>
            </div>
         </div>
-      )}
+      </div>
 
-      {/* Robust Workshop Registration Modal */}
-      {showWorkshopForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-           <form onSubmit={handleWorkshopSubmit} className="bg-white rounded-[2.5rem] shadow-2xl max-w-xl w-full p-10 space-y-6 animate-in zoom-in duration-200">
-              <div className="flex justify-between items-center">
+      {/* Forms and Modals - Retained but styled for Glassmorphism */}
+      {showLogForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[120] flex items-center justify-center p-4">
+           <form onSubmit={handleLogSubmit} className="bg-white/90 backdrop-blur-3xl rounded-[3rem] shadow-2xl max-w-2xl w-full p-12 space-y-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-8">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">
-                    {editingWorkshopId ? 'Modify Partner Details' : 'Register Partner Workshop'}
-                  </h3>
-                  <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mt-1">
-                    Complete all telemetry for technical assignment
-                  </p>
+                  <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">System Job Card</h3>
+                  <p className="text-[11px] text-amber-600 font-black uppercase tracking-[0.3em] mt-2">Technical Event Authorization</p>
                 </div>
-                <button type="button" onClick={closeWorkshopForm} className="text-gray-300 hover:text-gray-600 text-4xl leading-none">&times;</button>
+                <button type="button" onClick={() => setShowLogForm(false)} className="text-gray-300 hover:text-gray-900 text-5xl leading-none">&times;</button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Workshop Identification</label>
-                    <input 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Asset Identification</label>
+                    <select 
                       required 
-                      placeholder="e.g. Master Moto Works"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
-                      value={workshopFormData.name} 
-                      onChange={e => setWorkshopFormData({...workshopFormData, name: e.target.value})} 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner appearance-none"
+                      value={newLog.bikeId}
+                      onChange={e => setNewLog({...newLog, bikeId: e.target.value})}
+                    >
+                       <option value="">Choose Unit...</option>
+                       {bikes.map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Assigned Hub</label>
+                    <select 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner appearance-none"
+                      value={newLog.performedBy}
+                      onChange={e => setNewLog({...newLog, performedBy: e.target.value})}
+                    >
+                       <option value="In-House Workshop">Internal Hub</option>
+                       {workshops.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Invoice Amount (R)</label>
+                    <input 
+                      type="number" 
+                      required 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner"
+                      placeholder="0.00"
+                      value={newLog.cost || ''}
+                      onChange={e => setNewLog({...newLog, cost: Number(e.target.value)})}
                     />
                  </div>
-
-                 <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Region / City</label>
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Classification</label>
                     <select 
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all appearance-none" 
-                      value={workshopFormData.city} 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner appearance-none"
+                      value={newLog.serviceType}
+                      onChange={e => setNewLog({...newLog, serviceType: e.target.value as any})}
+                    >
+                       <option value="routine">Routine Care</option>
+                       <option value="repair">Mechanical Failure</option>
+                       <option value="tyres">Tyres & Rubber</option>
+                       <option value="oil">Lube & Fluid</option>
+                       <option value="parts">Component Swap</option>
+                    </select>
+                 </div>
+                 <div className="md:col-span-2 space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Log Summary</label>
+                    <input 
+                      type="text" 
+                      required 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner"
+                      placeholder="e.g. Major overhaul and drivetrain tensioning"
+                      value={newLog.description}
+                      onChange={e => setNewLog({...newLog, description: e.target.value})}
+                    />
+                 </div>
+              </div>
+
+              <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex items-center justify-between">
+                 <div className="flex items-center space-x-4">
+                    <input 
+                      type="checkbox" 
+                      id="mark-op" 
+                      className="w-6 h-6 rounded-lg accent-gray-900"
+                      checked={markOperational}
+                      onChange={e => setMarkOperational(e.target.checked)}
+                    />
+                    <label htmlFor="mark-op" className="text-[10px] font-black text-amber-900 uppercase tracking-widest cursor-pointer">Restore Operational Status on Save</label>
+                 </div>
+                 <span className="text-2xl">🏎️</span>
+              </div>
+
+              <div className="flex gap-6">
+                 <button type="button" onClick={() => setShowLogForm(false)} className="flex-1 py-6 bg-gray-100 text-gray-400 rounded-3xl font-black uppercase text-[11px] tracking-widest">Abort</button>
+                 <button type="submit" className="flex-[2] bg-gray-900 text-white py-6 rounded-3xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl hover:bg-black transition-all">Authorize Final Entry</button>
+              </div>
+           </form>
+        </div>
+      )}
+
+      {showWorkshopForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[130] flex items-center justify-center p-4">
+           <form onSubmit={handleWorkshopSubmit} className="bg-white/90 backdrop-blur-3xl rounded-[3rem] shadow-2xl max-w-xl w-full p-12 space-y-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-8">
+                 <div>
+                   <h3 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">{editingWorkshopId ? 'Partner Update' : 'New Hub Registry'}</h3>
+                   <p className="text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mt-2">Strategic Workshop Partnership</p>
+                 </div>
+                 <button type="button" onClick={closeWorkshopForm} className="text-gray-300 hover:text-gray-900 text-5xl leading-none">&times;</button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="md:col-span-2 space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Workshop Identifier</label>
+                    <input 
+                      type="text" 
+                      required 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner"
+                      placeholder="e.g. Master Moto JHB"
+                      value={workshopFormData.name}
+                      onChange={e => setWorkshopFormData({...workshopFormData, name: e.target.value})}
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Region</label>
+                    <select 
+                      required 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner appearance-none"
+                      value={workshopFormData.city}
                       onChange={e => setWorkshopFormData({...workshopFormData, city: e.target.value as any})}
                     >
                        <option value="JHB">Johannesburg</option>
@@ -689,229 +677,94 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                        <option value="EL">East London</option>
                     </select>
                  </div>
-
-                 <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Direct Contact Number</label>
+                 <div className="space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Contact Link</label>
                     <input 
+                      type="tel" 
                       required 
-                      placeholder="011 000 0000"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
-                      value={workshopFormData.contact} 
-                      onChange={e => setWorkshopFormData({...workshopFormData, contact: e.target.value})} 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner"
+                      placeholder="011 440 1234"
+                      value={workshopFormData.contact}
+                      onChange={e => setWorkshopFormData({...workshopFormData, contact: e.target.value})}
                     />
                  </div>
-
-                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Geographic Location / Address</label>
+                 <div className="md:col-span-2 space-y-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Coordinates</label>
                     <input 
+                      type="text" 
                       required 
-                      placeholder="Street address and suburb"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
-                      value={workshopFormData.location} 
-                      onChange={e => setWorkshopFormData({...workshopFormData, location: e.target.value})} 
+                      className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-bold outline-none focus:ring-4 focus:ring-amber-500/10 transition-all shadow-inner"
+                      placeholder="e.g. 42 Main Road, Wynberg"
+                      value={workshopFormData.location}
+                      onChange={e => setWorkshopFormData({...workshopFormData, location: e.target.value})}
                     />
-                 </div>
-
-                 <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Technical Rating (1.0 - 5.0)</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="5" 
-                      step="0.1" 
-                      required
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
-                      value={workshopFormData.rating} 
-                      onChange={e => setWorkshopFormData({...workshopFormData, rating: Number(e.target.value)})} 
-                    />
-                 </div>
-
-                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2 block">Core Specializations (Comma Separated)</label>
-                    <input 
-                      placeholder="e.g. Hero, Honda, Engine Rebuilds, Tyres"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none transition-all" 
-                      value={workshopFormData.specialization.join(', ')} 
-                      onChange={e => setWorkshopFormData({...workshopFormData, specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')})} 
-                    />
-                    <p className="text-[8px] text-gray-400 font-bold uppercase mt-2 px-1">Example: Hero, Big Boy, Major Repairs, Electrical</p>
                  </div>
               </div>
 
-              <button type="submit" className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl hover:bg-black transition-all active:scale-95">
-                {editingWorkshopId ? 'Authorize Changes' : 'Confirm Registration'}
-              </button>
+              <div className="flex gap-6">
+                 <button type="button" onClick={closeWorkshopForm} className="flex-1 py-6 bg-gray-100 text-gray-400 rounded-3xl font-black uppercase text-[11px] tracking-widest">Abort</button>
+                 <button type="submit" className="flex-[2] bg-gray-900 text-white py-6 rounded-3xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl hover:bg-black transition-all">Commit Registry</button>
+              </div>
            </form>
         </div>
       )}
 
-      {/* Modern Job Card Modal */}
-      {showLogForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleLogSubmit} className="bg-white rounded-[2.5rem] shadow-2xl max-w-xl w-full p-10 space-y-8 animate-in zoom-in duration-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Workshop Job Card</h3>
-                <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">Mechanical Maintenance Logging</p>
-              </div>
-              <button type="button" onClick={() => setShowLogForm(false)} className="text-gray-300 hover:text-gray-600 text-4xl leading-none transition-colors">&times;</button>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {assigningWorkshopBikeId && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-2xl z-[150] flex items-center justify-center p-4">
+           <div className="bg-white/95 backdrop-blur-3xl rounded-[4rem] shadow-2xl max-w-md w-full p-12 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-10">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Select Asset</label>
-                  <select 
-                    required
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
-                    value={newLog.bikeId}
-                    onChange={e => {
-                        const bike = (bikes || []).find(b => b.id === e.target.value);
-                        const ws = (workshops || []).find(w => w.id === bike?.assignedWorkshopId);
-                        setNewLog({...newLog, bikeId: e.target.value, performedBy: ws?.name || 'In-House Workshop'});
-                    }}
-                  >
-                    <option value="">Choose Motorcycle...</option>
-                    {(bikes || []).map(b => <option key={b.id} value={b.id}>{b.licenseNumber} - {b.makeModel}</option>)}
-                  </select>
+                  <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">Partner Selector</h3>
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-3">Deploying {bikes.find(b => b.id === assigningWorkshopBikeId)?.licenseNumber}</p>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Job Category</label>
-                  <select 
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
-                    value={newLog.serviceType}
-                    onChange={e => setNewLog({...newLog, serviceType: e.target.value as any})}
-                  >
-                    <option value="routine">Routine Service</option>
-                    <option value="repair">Major Repair</option>
-                    <option value="tyres">Tyres & Wheels</option>
-                    <option value="parts">Component Install</option>
-                    <option value="oil">Oil & Lube</option>
-                  </select>
-                </div>
+                <button onClick={() => setAssigningWorkshopBikeId(null)} className="text-4xl text-gray-300 hover:text-gray-900 transition-colors">&times;</button>
               </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Job Narrative</label>
-                <textarea 
-                  required
-                  placeholder="Describe the fault and work performed..."
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 h-24 resize-none transition-all"
-                  value={newLog.description}
-                  onChange={e => setNewLog({...newLog, description: e.target.value})}
-                ></textarea>
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+                 {workshops.filter(w => {
+                    const bike = bikes.find(b => b.id === assigningWorkshopBikeId);
+                    return bike ? w.city === bike.city : true;
+                 }).map(w => (
+                   <button 
+                    key={w.id} 
+                    onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, w.id)}
+                    className="w-full flex items-center justify-between p-6 rounded-[2.5rem] border border-gray-100 bg-white hover:bg-amber-500 hover:border-amber-600 transition-all duration-500 text-left group"
+                   >
+                     <div className="flex items-center space-x-5">
+                       <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🏪</div>
+                       <div>
+                         <span className="font-black text-gray-900 block uppercase text-sm leading-none mb-1 group-hover:text-white transition-colors">{w.name}</span>
+                         <span className="text-[9px] text-gray-400 uppercase font-black tracking-widest group-hover:text-white/60 transition-colors">{w.location}</span>
+                       </div>
+                     </div>
+                     <span className="text-amber-500 font-black text-xs group-hover:text-white transition-colors">★{w.rating}</span>
+                   </button>
+                 ))}
+                 <button onClick={() => handleAssignWorkshop(assigningWorkshopBikeId!, 'none')} className="w-full p-6 rounded-[2.5rem] border-2 border-dashed border-gray-200 text-gray-300 font-black hover:bg-gray-50 hover:text-gray-900 transition-all uppercase text-[10px] tracking-[0.25em] mt-6">Internal / Pending</button>
               </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Cost (R)</label>
-                  <input 
-                    type="number"
-                    required
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                    value={newLog.cost || ''}
-                    onChange={e => setNewLog({...newLog, cost: Number(e.target.value)})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Performed By</label>
-                  <select 
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none"
-                    value={newLog.performedBy}
-                    onChange={e => setNewLog({...newLog, performedBy: e.target.value})}
-                  >
-                    <option value="In-House Workshop">In-House Workshop</option>
-                    {(workshops || []).map(w => (
-                      <option key={w.id} value={w.name}>{w.name} ({w.city})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                <input 
-                  type="checkbox" 
-                  id="markActive" 
-                  checked={markOperational} 
-                  onChange={e => setMarkOperational(e.target.checked)}
-                  className="w-5 h-5 rounded accent-blue-600"
-                />
-                <label htmlFor="markActive" className="text-xs font-black text-blue-800 uppercase tracking-widest cursor-pointer">Mark asset as operational after logging</label>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Documentation (Evidence / Invoice)</label>
-                <div className="relative">
-                  <input 
-                    type="file"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*,application/pdf"
-                  />
-                  {!newLog.attachmentUrl ? (
-                    <button 
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 text-gray-400 hover:bg-amber-50 hover:border-amber-300 transition-all flex items-center justify-center space-x-2"
-                    >
-                      <span className="text-xl">📸</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest">Attach Doc / Photo</span>
-                    </button>
-                  ) : (
-                    <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-lg">✅</span>
-                        <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">File Encoded</span>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setNewLog(prev => ({ ...prev, attachmentUrl: '' }));
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button type="submit" className="w-full bg-amber-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95">
-              Authorize & Finalize Job Card
-            </button>
-          </form>
+           </div>
         </div>
       )}
 
       {viewingAttachment && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 md:p-10">
-          <div className="max-w-4xl w-full bg-white rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in duration-300">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Mechanical Evidence Viewer</h3>
-              <button 
-                onClick={() => setViewingAttachment(null)}
-                className="text-gray-400 hover:text-gray-900 text-4xl leading-none transition-colors"
-              >
-                &times;
-              </button>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[150] flex items-center justify-center p-4 md:p-12">
+          <div className="max-w-5xl w-full bg-white rounded-[4rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in duration-500">
+            <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">Encrypted Registry Evidence</h3>
+              <button onClick={() => setViewingAttachment(null)} className="text-gray-300 hover:text-gray-900 text-6xl leading-none transition-colors">&times;</button>
             </div>
-            <div className="flex-1 overflow-auto bg-gray-200/50 flex items-center justify-center p-8 min-h-[50vh]">
+            <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-12 min-h-[60vh]">
               {viewingAttachment.startsWith('data:image') ? (
-                <img src={viewingAttachment} alt="Workshop Evidence" className="max-w-full h-auto shadow-xl rounded-xl" />
+                <img src={viewingAttachment} alt="Notice Copy" className="max-w-full h-auto shadow-2xl rounded-3xl border-8 border-white" />
               ) : (
-                <div className="text-center space-y-4">
-                  <div className="text-6xl">📄</div>
-                  <p className="text-gray-600 font-bold">Document Attachment (PDF or Other)</p>
-                  <a href={viewingAttachment} download="maintenance-doc" className="inline-block bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Download File</a>
+                <div className="text-center space-y-8">
+                  <div className="text-9xl">📄</div>
+                  <p className="text-gray-900 font-black uppercase text-lg tracking-[0.2em]">Digital Technical Record</p>
+                  <a href={viewingAttachment} download="service-document" className="inline-block bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.3em] shadow-2xl shadow-blue-200 hover:scale-110 transition-all">Download Local File</a>
                 </div>
               )}
             </div>
-            <div className="p-6 text-center bg-gray-50 border-t border-gray-100">
-              <button onClick={() => setViewingAttachment(null)} className="bg-gray-800 text-white px-10 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Close Viewer</button>
+            <div className="p-10 text-center bg-white border-t border-gray-100">
+              <button onClick={() => setViewingAttachment(null)} className="bg-gray-900 text-white px-16 py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.25em]">Close Vault</button>
             </div>
           </div>
         </div>

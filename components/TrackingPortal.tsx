@@ -9,104 +9,105 @@ interface TrackingPortalProps {
 const TrackingPortal: React.FC<TrackingPortalProps> = ({ bikes }) => {
   const [selectedBikeId, setSelectedBikeId] = useState<string | null>(null);
   const selectedBike = bikes.find(b => b.id === selectedBikeId);
-
   const trackableBikes = bikes.filter(b => b.tracker);
 
   return (
-    <div className="flex flex-col lg:h-[calc(100vh-160px)] space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="flex flex-col lg:h-[calc(100vh-280px)] space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-          <h2 className="text-lg md:text-xl font-bold text-gray-800">MotoTrack Live</h2>
-          <p className="text-[10px] text-gray-400 font-bold uppercase flex items-center">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-2"></span>
-            Cloud Monitoring Active
-          </p>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">Telemetry Hub</h2>
+          <p className="text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mt-3">Real-time Satellite Grid Active</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-           <div className="flex-1 sm:flex-none bg-white px-3 py-2 rounded-xl border border-gray-50 text-center">
-              <span className="text-blue-500 font-black text-[10px] uppercase">{trackableBikes.filter(b => b.tracker?.status === 'moving').length} Moving</span>
+        <div className="flex bg-white/70 backdrop-blur-xl p-2 rounded-2xl border border-white/60 shadow-sm">
+           <div className="px-6 py-3 border-r border-gray-100 flex flex-col items-center">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Signal Strength</span>
+              <span className="text-xs font-black text-blue-500 uppercase">98% Nominal</span>
            </div>
-           <div className="flex-1 sm:flex-none bg-white px-3 py-2 rounded-xl border border-gray-50 text-center">
-              <span className="text-gray-400 font-black text-[10px] uppercase">{trackableBikes.filter(b => b.tracker?.status === 'parked').length} Parked</span>
+           <div className="px-6 py-3 flex flex-col items-center">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Grid Lock</span>
+              <span className="text-xs font-black text-green-500 uppercase">{trackableBikes.length} Assets</span>
            </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 md:gap-6 overflow-hidden">
-        {/* Responsive Map Simulated Area */}
-        <div className="h-[40vh] lg:h-full lg:flex-1 bg-gray-900 rounded-2xl md:rounded-[2.5rem] relative overflow-hidden border border-gray-800 shadow-xl">
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#3B82F6 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }}></div>
+      <div className="flex-1 flex flex-col lg:flex-row gap-10 overflow-hidden min-h-[500px]">
+        {/* premium Map Simulated Area */}
+        <div className="h-full lg:flex-1 bg-gray-950 rounded-[4rem] relative overflow-hidden shadow-2xl border-4 border-gray-900 group">
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#3B82F6 0.5px, transparent 0.5px)', backgroundSize: '40px 40px' }}></div>
           
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <div className="text-gray-800 text-[10vw] font-black opacity-5 uppercase">South Africa</div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
+             <div className="text-white text-[15vw] font-black uppercase tracking-tighter">GRID MAP</div>
           </div>
 
           {trackableBikes.map(bike => {
-            if (!bike.tracker) return null;
-            const left = ((bike.tracker.lng + 180) % 360) / 360 * 1000 % 100;
-            const top = (90 - bike.tracker.lat) / 180 * 1000 % 100;
+            const left = ((bike.tracker!.lng + 180) % 360) / 360 * 1000 % 100;
+            const top = (90 - bike.tracker!.lat) / 180 * 1000 % 100;
 
             return (
               <button
                 key={bike.id}
                 onClick={() => setSelectedBikeId(bike.id)}
-                className={`absolute w-7 h-7 md:w-9 md:h-9 rounded-full border-2 transform -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-125 z-10 flex items-center justify-center ${
-                  selectedBikeId === bike.id ? 'border-white scale-125 ring-4 ring-blue-500/20 z-20' : 'border-blue-500/40'
+                className={`absolute w-10 h-10 rounded-3xl border-4 transform -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-125 z-10 flex items-center justify-center ${
+                  selectedBikeId === bike.id ? 'border-white scale-125 ring-8 ring-blue-500/20 z-20' : 'border-blue-500/40'
                 } ${
-                  bike.tracker.status === 'moving' ? 'bg-blue-600' : 
-                  bike.tracker.status === 'ignited' ? 'bg-amber-500' : 'bg-gray-700'
+                  bike.tracker!.status === 'moving' ? 'bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.8)]' : 'bg-gray-800'
                 }`}
                 style={{ left: `${left}%`, top: `${top}%` }}
               >
-                <span className="text-sm">🏍️</span>
-                {bike.tracker.status === 'moving' && (
-                  <span className="absolute -inset-1 rounded-full border border-blue-400 animate-ping opacity-30"></span>
+                <span className="text-lg">🏍️</span>
+                {bike.tracker!.status === 'moving' && (
+                  <span className="absolute -inset-2 rounded-3xl border-2 border-blue-400 animate-ping opacity-30"></span>
                 )}
               </button>
             );
           })}
+
+          {/* Map Controls */}
+          <div className="absolute bottom-10 left-10 flex flex-col gap-3">
+             <button className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl text-white hover:bg-white/20 transition-all font-black">+</button>
+             <button className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl text-white hover:bg-white/20 transition-all font-black">-</button>
+          </div>
         </div>
 
-        {/* Responsive Sidebar Info Panel */}
-        <div className="lg:w-80 bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 p-6 md:p-8 shadow-sm lg:overflow-y-auto">
-          {selectedBike && selectedBike.tracker ? (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 lg:slide-in-from-right-4">
-               <div className="pb-4 border-b border-gray-50 flex justify-between items-start">
-                 <div>
-                   <h3 className="text-xl font-black text-gray-800 leading-tight uppercase tracking-tight">{selectedBike.licenseNumber}</h3>
-                   <p className="text-[10px] text-gray-400 font-bold uppercase">{selectedBike.makeModel}</p>
-                 </div>
-                 <button onClick={() => setSelectedBikeId(null)} className="lg:hidden text-2xl text-gray-300 hover:text-gray-600 transition-colors">&times;</button>
+        {/* Info HUD */}
+        <div className="lg:w-96 bg-white/80 backdrop-blur-3xl rounded-[4rem] border border-white/60 p-10 shadow-sm lg:overflow-y-auto relative no-scrollbar">
+          {selectedBike ? (
+            <div className="space-y-10 animate-in slide-in-from-right-10 duration-700">
+               <div>
+                  <h3 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none mb-3">{selectedBike.licenseNumber}</h3>
+                  <p className="text-[11px] text-blue-500 font-black uppercase tracking-[0.3em]">{selectedBike.makeModel}</p>
                </div>
 
-               <div className="grid grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+               <div className="grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Battery', val: `${selectedBike.tracker.battery}%`, color: selectedBike.tracker.battery < 20 ? 'red' : 'gray' },
-                    { label: 'Signal', val: selectedBike.tracker.signalStrength, color: 'gray' },
-                    { label: 'Speed', val: `${selectedBike.tracker.speed || 0} km/h`, color: 'gray' },
-                    { label: 'Ignition', val: (selectedBike.tracker.status === 'ignited' || selectedBike.tracker.status === 'moving' ? 'ON' : 'OFF'), color: 'gray' }
-                  ].map((item, i) => (
-                    <div key={i} className="p-3 bg-gray-50 rounded-xl">
-                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{item.label}</p>
-                      <p className={`text-xs font-black uppercase text-${item.color}-600`}>{item.val}</p>
+                    { l: 'Velocity', v: `${selectedBike.tracker!.speed}km/h` },
+                    { l: 'Battery', v: `${selectedBike.tracker!.battery}%` },
+                    { l: 'Signal', v: 'Strong' },
+                    { l: 'Ignition', v: 'Active' }
+                  ].map((stat, i) => (
+                    <div key={i} className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100/50 shadow-inner">
+                       <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.l}</p>
+                       <p className="text-lg font-black text-gray-900">{stat.v}</p>
                     </div>
                   ))}
                </div>
 
-               <div className="space-y-2 pt-2">
-                  <button className="w-full py-4 bg-red-600 text-white rounded-xl md:rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-red-100">
-                    🚨 Immobilize Engine
+               <div className="space-y-4 pt-6">
+                  <button className="w-full py-6 bg-red-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl shadow-red-200 hover:scale-105 transition-all">
+                    🚨 Immobilize Unit
                   </button>
-                  <button className="w-full py-4 bg-gray-100 text-gray-600 rounded-xl md:rounded-2xl font-black text-[10px] uppercase tracking-widest">
-                    Google Maps Link
+                  <button className="w-full py-6 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl transition-all">
+                    Satellite Link
                   </button>
                </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center py-10 lg:h-full">
-               <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-sm">📍</div>
-               <h4 className="text-[11px] font-black text-gray-800 uppercase mb-1">Select Asset</h4>
-               <p className="text-[10px] text-gray-400 font-bold uppercase px-6">Click a marker on the map to interact</p>
+            <div className="flex flex-col items-center justify-center text-center h-full space-y-8 opacity-40">
+               <div className="w-24 h-24 bg-gray-50 rounded-[3rem] flex items-center justify-center text-5xl shadow-inner">📍</div>
+               <div>
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-[0.3em] mb-2">Select Active node</h4>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-10">Click any operational unit on the satellite grid to link telemetry</p>
+               </div>
             </div>
           )}
         </div>

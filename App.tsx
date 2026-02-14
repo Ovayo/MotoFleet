@@ -27,6 +27,10 @@ const App: React.FC = () => {
     return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
   });
 
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('motofleet_dark_mode') === 'true';
+  });
+
   const [fleetId, setFleetId] = useState<string | null>(() => {
     const saved = localStorage.getItem('active_fleet_id');
     if (!saved && isAdminAuthenticated) return 'fleet_001';
@@ -60,6 +64,10 @@ const App: React.FC = () => {
   const [fines, setFines] = useState<TrafficFine[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem('motofleet_dark_mode', isDarkMode.toString());
+  }, [isDarkMode]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -125,7 +133,7 @@ const App: React.FC = () => {
   };
 
   const handleClearNotifications = () => {
-    if (window.confirm("Are you sure you want to wipe the communication logs? This action cannot be undone.")) {
+    if (window.confirm("Are you sure you want to wipe the communication logs?")) {
       setNotifications([]);
     }
   };
@@ -151,7 +159,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteMaintenance = (id: string) => {
-    if (window.confirm("Confirm deletion of this expense record?")) {
+    if (window.confirm("Confirm deletion?")) {
       setMaintenance(prev => (prev || []).filter(m => m.id !== id));
     }
   };
@@ -173,7 +181,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteWorkshop = (id: string) => {
-    if (window.confirm("Confirm removal of this workshop partner?")) {
+    if (window.confirm("Confirm removal?")) {
       setWorkshops(prev => (prev || []).filter(w => w.id !== id));
     }
   };
@@ -320,13 +328,19 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+    <div className={`flex min-h-screen font-sans overflow-x-hidden relative transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Background Refractive Elements */}
+      <div className={`fixed top-[-10%] right-[-5%] w-[40vw] h-[40vw] blur-[120px] rounded-full pointer-events-none -z-10 animate-pulse ${isDarkMode ? 'bg-blue-600/10' : 'bg-blue-500/5'}`}></div>
+      <div className={`fixed bottom-[-10%] left-[-5%] w-[35vw] h-[35vw] blur-[120px] rounded-full pointer-events-none -z-10 animate-pulse delay-700 ${isDarkMode ? 'bg-amber-600/10' : 'bg-amber-500/5'}`}></div>
+
       {showSidebar && (
         <Sidebar 
           activeView={view} 
           setView={setView} 
           role={role} 
           isAdminAuthenticated={isAdminAuthenticated}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
           onSwitchMode={(newRole) => {
             setRole(newRole);
@@ -337,53 +351,57 @@ const App: React.FC = () => {
         />
       )}
       
-      <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-20 md:pt-8' : ''}`}>
+      <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-10 pt-6 md:pt-10 pb-24 md:pb-10' : ''}`}>
         {showSidebar && (
-          <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
+          <header className={`mb-8 md:mb-12 flex flex-wrap justify-between items-center backdrop-blur-3xl p-5 md:p-6 rounded-[2.5rem] sticky top-6 z-[60] shadow-2xl gap-4 border ${isDarkMode ? 'bg-gray-900/60 border-white/5 shadow-black' : 'bg-white/40 border-white/60 shadow-gray-100/50'}`}>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
-                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
+              <div className="flex items-center space-x-3">
+                <h1 className="text-xl md:text-3xl font-black tracking-tighter capitalize truncate">
+                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop Terminal' : `Operator Hub`}
                 </h1>
                 {isAdminAuthenticated && (
-                  <div className="flex items-center space-x-2 ml-4">
-                    <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
+                  <div className="flex items-center space-x-3 ml-4">
+                    <span className={`hidden sm:inline-block text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] border ${isDarkMode ? 'text-blue-400 bg-blue-400/10 border-blue-400/20' : 'text-blue-600 bg-blue-50/50 border-blue-100/50'}`}>
                       {fleetName}
                     </span>
                     {isCloudSyncing && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                      <div className="flex space-x-1">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-              <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
-                {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : (loggedDriver?.name || 'Admin Simulation')}
+              <p className={`text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] mt-1 truncate ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                {role === 'admin' ? "Multi-Tenant Fleet Command" : role === 'mechanic' ? "Technical Operations Terminal" : (loggedDriver?.name || 'Impersonation Mode')}
               </p>
             </div>
             
-            <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="flex items-center space-x-3 md:space-x-6">
               <button 
                 onClick={handleLogout} 
-                className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
+                className={`hidden sm:block text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isDarkMode ? 'text-white/40 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
               >
-                Sign Out
+                Terminate Session
               </button>
-              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
-                isAdminAuthenticated ? 'bg-blue-600 shadow-blue-100' : 
-                role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
-                'bg-green-600 shadow-green-100'
+              <div className={`w-12 h-12 md:w-16 md:h-16 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center text-white font-black shadow-2xl overflow-hidden group relative cursor-pointer border-4 ${isDarkMode ? 'border-white/10' : 'border-white/80'} ${
+                isAdminAuthenticated ? 'bg-gray-900' : 
+                role === 'mechanic' ? 'bg-amber-600' : 
+                'bg-green-600'
               }`}>
                 {role === 'driver' && loggedDriver?.profilePictureUrl ? (
-                  <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
+                  <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
                 ) : (
-                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AS')
+                  <span className="text-lg md:text-xl">{isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AS')}</span>
                 )}
               </div>
             </div>
           </header>
         )}
 
-        <div className={showSidebar ? "animate-in fade-in slide-in-from-bottom-3 duration-500" : ""}>
+        <div className={showSidebar ? "animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100" : ""}>
           {renderView()}
         </div>
       </main>
