@@ -206,6 +206,15 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     setAssigningWorkshopBikeId(null);
   };
 
+  // Normalization helper for WhatsApp links
+  const formatForWhatsApp = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '27' + cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
   const selectedBike = (bikes || []).find(b => b.id === selectedBikeId);
 
   return (
@@ -491,7 +500,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                             <span>Direct Dial</span>
                           </a>
                           <a 
-                            href={`https://wa.me/${(w.contact || '').replace(/\s/g, '')}`}
+                            href={`https://wa.me/${formatForWhatsApp(w.contact || '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 flex items-center justify-center space-x-3 py-4 bg-green-50 text-green-700 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-600 hover:text-white transition-all shadow-sm active:scale-95"

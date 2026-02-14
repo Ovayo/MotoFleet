@@ -169,8 +169,9 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
   const requestSupport = () => {
     const message = `Emergency Support Required: Driver ${driver.name}, Vehicle ${bike?.licenseNumber}. I am currently experiencing technical issues. Please assist.`;
-    // Updated to the user's personal WhatsApp number as requested
-    window.open(`https://wa.me/0682170330?text=${encodeURIComponent(message)}`, '_blank');
+    // WhatsApp numbers MUST be in full international format WITHOUT the leading '0' or '+'
+    // 0682170330 becomes 27682170330
+    window.open(`https://wa.me/27682170330?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const headerBgImage = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=2070&auto=format&fit=crop";

@@ -165,6 +165,15 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     });
   };
 
+  // Centralized helper to format phone numbers for wa.me links
+  const formatForWhatsApp = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, ''); // Remove non-numeric characters
+    if (cleaned.startsWith('0')) {
+      cleaned = '27' + cleaned.substring(1); // Standard SA international prefix
+    }
+    return cleaned;
+  };
+
   const sendReminder = (driver: Driver) => {
     const balance = getFullBalance(driver);
     const unpaidFineTotal = getUnpaidFines(driver.id);
@@ -197,7 +206,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     }
     
     const encodedMsg = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${driver.contact.replace(/\s+/g, '')}?text=${encodedMsg}`;
+    const normalizedPhone = formatForWhatsApp(driver.contact);
+    const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodedMsg}`;
     window.open(whatsappUrl, '_blank');
   };
 

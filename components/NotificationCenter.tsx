@@ -27,6 +27,15 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     });
   }, [notifications, drivers]);
 
+  // Normalization helper for WhatsApp links
+  const formatForWhatsApp = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '27' + cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
@@ -114,7 +123,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   <button 
                     onClick={() => {
                       const msg = encodeURIComponent(notif.message);
-                      window.open(`https://wa.me/${driver?.contact.replace(/\s+/g, '')}?text=${msg}`, '_blank');
+                      const normalizedPhone = formatForWhatsApp(driver?.contact || '');
+                      window.open(`https://wa.me/${normalizedPhone}?text=${msg}`, '_blank');
                     }}
                     className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl hover:bg-green-600 hover:text-white transition-all shadow-sm flex items-center justify-center text-xl"
                     title="Send WhatsApp Reminder"
