@@ -126,6 +126,10 @@ const App: React.FC = () => {
     setAccidents(prev => [...prev, { ...report, id: `acc-${Date.now()}` }]);
   };
 
+  const handleUpdateAccident = (updatedReport: AccidentReport) => {
+    setAccidents(prev => prev.map(a => a.id === updatedReport.id ? updatedReport : a));
+  };
+
   const handleUpdateAccidentStatus = (id: string, status: AccidentReport['status']) => {
     setAccidents(prev => prev.map(a => a.id === id ? { ...a, status } : a));
   };
@@ -300,7 +304,7 @@ const App: React.FC = () => {
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
       case 'incidents':
-        return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onAddAccident={handleAddAccident} onUpdateStatus={handleUpdateAccidentStatus} />;
+        return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onAddAccident={handleAddAccident} onUpdateAccident={handleUpdateAccident} onUpdateStatus={handleUpdateAccidentStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
       case 'tracking':

@@ -7,13 +7,15 @@ interface AccidentLogProps {
   bikes: Bike[];
   drivers: Driver[];
   onAddAccident: (report: Omit<AccidentReport, 'id'>) => void;
+  onUpdateAccident: (report: AccidentReport) => void;
   onUpdateStatus: (id: string, status: AccidentReport['status']) => void;
 }
 
-const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, onAddAccident, onUpdateStatus }) => {
+const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, onAddAccident, onUpdateAccident, onUpdateStatus }) => {
   const [filter, setFilter] = useState<AccidentReport['status'] | 'all'>('all');
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingAccidentId, setEditingAccidentId] = useState<string | null>(null);
   const accidentFileInputRef = useRef<HTMLInputElement>(null);
 
   const [accidentFormData, setAccidentFormData] = useState<Omit<AccidentReport, 'id'>>({
@@ -49,14 +51,40 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
     }
   };
 
+  const handleEdit = (accident: AccidentReport) => {
+    setEditingAccidentId(accident.id);
+    setAccidentFormData({
+      bikeId: accident.bikeId,
+      driverId: accident.driverId,
+      date: accident.date,
+      location: accident.location,
+      description: accident.description,
+      status: accident.status,
+      thirdPartyDetails: accident.thirdPartyDetails || '',
+      attachmentUrl: accident.attachmentUrl || ''
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!accidentFormData.bikeId || !accidentFormData.driverId) {
       alert("Please select both an asset and an operator.");
       return;
     }
-    onAddAccident(accidentFormData);
-    setShowAddForm(false);
+    
+    if (editingAccidentId) {
+      onUpdateAccident({ ...accidentFormData, id: editingAccidentId } as AccidentReport);
+    } else {
+      onAddAccident(accidentFormData);
+    }
+    
+    setShowForm(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setEditingAccidentId(null);
     setAccidentFormData({
       bikeId: '',
       driverId: '',
@@ -89,7 +117,7 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
             ))}
           </div>
           <button 
-            onClick={() => setShowAddForm(true)}
+            onClick={() => { resetForm(); setShowForm(true); }}
             className="flex-1 md:flex-none bg-red-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95"
           >
             + Report Incident
@@ -121,18 +149,27 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
                         Driver: {driver?.name || 'Unknown'} • {new Date(accident.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <select 
-                      value={accident.status} 
-                      onChange={(e) => onUpdateStatus(accident.id, e.target.value as any)}
-                      className={`text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border-none outline-none ${
-                        accident.status === 'resolved' ? 'bg-green-50 text-green-600' : 
-                        accident.status === 'reported' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
-                      }`}
-                    >
-                      <option value="reported">Reported</option>
-                      <option value="insurance-pending">Insurance Pending</option>
-                      <option value="resolved">Resolved</option>
-                    </select>
+                    <div className="flex items-center space-x-3">
+                      <button 
+                        onClick={() => handleEdit(accident)}
+                        className="p-2 text-gray-300 hover:text-blue-500 transition-colors"
+                        title="Edit Report"
+                      >
+                        ✏️
+                      </button>
+                      <select 
+                        value={accident.status} 
+                        onChange={(e) => onUpdateStatus(accident.id, e.target.value as any)}
+                        className={`text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border-none outline-none ${
+                          accident.status === 'resolved' ? 'bg-green-50 text-green-600' : 
+                          accident.status === 'reported' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                        }`}
+                      >
+                        <option value="reported">Reported</option>
+                        <option value="insurance-pending">Insurance Pending</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                    </div>
                   </div>
                   
                   <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100/50">
@@ -168,15 +205,19 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
         )}
       </div>
 
-      {showAddForm && (
+      {showForm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
            <form onSubmit={handleSubmit} className="bg-white rounded-[3rem] shadow-2xl max-w-2xl w-full p-10 space-y-8 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center border-b border-gray-50 pb-6">
                  <div>
-                   <h3 className="text-2xl font-black text-red-600 uppercase tracking-tight">Manual Incident Entry</h3>
-                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Official Fleet Incident Declaration</p>
+                   <h3 className="text-2xl font-black text-red-600 uppercase tracking-tight">
+                     {editingAccidentId ? 'Edit Incident Record' : 'Manual Incident Entry'}
+                   </h3>
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">
+                     {editingAccidentId ? 'Modify Incident Telemetry' : 'Official Fleet Incident Declaration'}
+                   </p>
                  </div>
-                 <button type="button" onClick={() => setShowAddForm(false)} className="text-gray-300 hover:text-red-500 text-5xl leading-none">&times;</button>
+                 <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="text-gray-300 hover:text-red-500 text-5xl leading-none">&times;</button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -232,7 +273,9 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
                  </div>
               </div>
 
-              <button type="submit" className="w-full bg-red-600 text-white py-6 rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-red-200 hover:bg-red-700 transition-all active:scale-95">Commit Incident Report</button>
+              <button type="submit" className="w-full bg-red-600 text-white py-6 rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-red-200 hover:bg-red-700 transition-all active:scale-95">
+                {editingAccidentId ? 'Update Incident Report' : 'Commit Incident Report'}
+              </button>
            </form>
         </div>
       )}
