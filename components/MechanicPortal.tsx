@@ -56,6 +56,18 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     rating: 5
   });
 
+  const getSpecIcon = (spec: string) => {
+    const s = spec.toLowerCase();
+    if (s.includes('engine')) return '⚙️';
+    if (s.includes('tyre') || s.includes('tire')) return '🛞';
+    if (s.includes('elect') || s.includes('wire')) return '⚡';
+    if (s.includes('brake')) return '🛑';
+    if (s.includes('oil') || s.includes('lube')) return '🛢️';
+    if (s.includes('body') || s.includes('paint')) return '🎨';
+    if (s.includes('general')) return '🛠️';
+    return '🔧';
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -115,7 +127,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
   const filteredWorkshops = useMemo(() => {
     let result = (workshops || []).filter(w => {
-      const matchesSearch = w.name?.toLowerCase().includes(workshopSearch.toLowerCase()) || 
+      const matchesSearch = (w.name || '').toLowerCase().includes(workshopSearch.toLowerCase()) || 
                            (w.specialization || []).some(s => s.toLowerCase().includes(workshopSearch.toLowerCase()));
       const matchesCity = cityFilter === 'all' || w.city === cityFilter;
       return matchesSearch && matchesCity;
@@ -149,12 +161,22 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   };
 
-  const handleWorkshopSubmit = (e: React.FormEvent) => {
+  // Fixed handleWorkshopSubmit to correctly type the form event for elements access
+  const handleWorkshopSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const specsInput = form.elements.namedItem('specializations') as HTMLInputElement;
+    const specs = (specsInput?.value || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    const data = { ...workshopFormData, specialization: specs };
+    
     if (editingWorkshopId) {
-      onUpdateWorkshop(editingWorkshopId, workshopFormData);
+      onUpdateWorkshop(editingWorkshopId, data);
     } else {
-      onAddWorkshop(workshopFormData);
+      onAddWorkshop(data);
     }
     closeWorkshopForm();
   };
@@ -172,7 +194,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   };
 
-  // Fix: Added missing openEditWorkshop function to populate form for editing
   const openEditWorkshop = (workshop: Workshop) => {
     setEditingWorkshopId(workshop.id);
     setWorkshopFormData({
@@ -274,29 +295,33 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                           <div className="flex-1 flex flex-col md:flex-row items-center md:justify-end gap-6">
                             <div className="text-center md:text-right border-l-0 md:border-l border-gray-100 md:pl-6">
                               <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1 flex items-center justify-center md:justify-end">
-                                <span className="mr-1">🏪</span> Partner Location
+                                <span className="mr-1">🏪</span> Assigned Partner
                               </p>
-                              <h5 className="text-xs font-black text-gray-800 uppercase truncate">{workshop.name}</h5>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase">{workshop.location}</p>
+                              <h5 className="text-sm font-black text-gray-800 uppercase truncate">{workshop.name}</h5>
+                              <div className="flex items-center justify-center md:justify-end space-x-2 mt-1">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase truncate">{workshop.contact}</span>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase truncate">{workshop.location}</span>
+                              </div>
                             </div>
                             <div className="flex items-center space-x-2">
                               <button 
                                 onClick={() => window.open(`tel:${workshop.contact}`)}
-                                className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                                 title="Call Workshop"
                               >
                                 📞
                               </button>
                               <button 
                                 onClick={() => window.open(`https://wa.me/${formatForWhatsApp(workshop.contact)}`, '_blank')}
-                                className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                                className="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm"
                                 title="WhatsApp Workshop"
                               >
                                 💬
                               </button>
                               <button 
                                 onClick={() => setAssigningWorkshopBikeId(bike.id)}
-                                className="text-[8px] font-black text-gray-400 uppercase hover:text-amber-600 transition-colors"
+                                className="text-[8px] font-black text-gray-400 uppercase hover:text-amber-600 transition-colors px-3 py-2 bg-gray-50 rounded-lg"
                               >
                                 Transfer
                               </button>
@@ -416,6 +441,14 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                          <option value="CTN">Cape Town</option>
                          <option value="EL">East London</option>
                        </select>
+                       <select 
+                        className="bg-gray-50 border border-gray-100 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                       >
+                         <option value="rating">Top Rated</option>
+                         <option value="name">Alphabetical</option>
+                       </select>
                        <button 
                         onClick={() => setShowWorkshopForm(true)}
                         className="bg-amber-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-100"
@@ -426,54 +459,81 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredWorkshops.map(workshop => (
-                    <div key={workshop.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm group hover:shadow-xl transition-all">
-                       <div className="flex justify-between items-start mb-6">
-                          <div className="flex items-center space-x-4">
-                             <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500">
-                               🏪
-                             </div>
-                             <div>
-                                <h4 className="font-black text-gray-800 text-lg uppercase leading-tight tracking-tight">{workshop.name}</h4>
-                                <div className="flex items-center mt-1 space-x-2">
-                                  <span className="text-[10px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase">{workshop.city}</span>
-                                  <div className="flex text-[10px]">
-                                    {[...Array(5)].map((_, i) => (
-                                      <span key={i} className={i < (workshop.rating || 0) ? 'text-amber-400' : 'text-gray-200'}>★</span>
-                                    ))}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
+                  {filteredWorkshops.map(workshop => {
+                    const primarySpec = workshop.specialization && workshop.specialization.length > 0 ? workshop.specialization[0] : null;
+                    const otherSpecs = workshop.specialization && workshop.specialization.length > 1 ? workshop.specialization.slice(1) : [];
+                    
+                    return (
+                      <div key={workshop.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden">
+                         <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center space-x-4">
+                               <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500 relative">
+                                 🏪
+                                 {primarySpec && <span className="absolute -right-1 -bottom-1 bg-white text-[10px] w-6 h-6 rounded-lg flex items-center justify-center shadow-sm text-gray-800 border border-gray-100">{getSpecIcon(primarySpec)}</span>}
+                               </div>
+                               <div>
+                                  <h4 className="font-black text-gray-800 text-lg uppercase leading-tight tracking-tight">{workshop.name}</h4>
+                                  <div className="flex items-center mt-1 space-x-2">
+                                    <span className="text-[10px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase">{workshop.city}</span>
+                                    <div className="flex text-[10px]">
+                                      {[...Array(5)].map((_, i) => (
+                                        <span key={i} className={i < (workshop.rating || 0) ? 'text-amber-400' : 'text-gray-200'}>★</span>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                             </div>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                             <button onClick={() => openEditWorkshop(workshop)} className="p-2 text-gray-300 hover:text-blue-500 transition-colors">✏️</button>
-                             <button onClick={() => onDeleteWorkshop(workshop.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">🗑️</button>
-                          </div>
-                       </div>
+                               </div>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                               <button onClick={() => openEditWorkshop(workshop)} className="p-2 text-gray-300 hover:text-blue-500 transition-colors">✏️</button>
+                               <button onClick={() => onDeleteWorkshop(workshop.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">🗑️</button>
+                            </div>
+                         </div>
 
-                       <div className="space-y-4 mb-6">
-                          <div className="p-3 bg-gray-50 rounded-xl flex items-center space-x-3">
-                             <span className="text-gray-400">📍</span>
-                             <span className="text-[11px] font-bold text-gray-600 uppercase truncate">{workshop.location}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                             {(workshop.specialization || []).map((spec, i) => (
-                               <span key={i} className="px-2.5 py-1 bg-gray-50 text-gray-400 rounded-lg text-[9px] font-black uppercase border border-gray-100">
-                                 {spec}
-                               </span>
-                             ))}
-                          </div>
-                       </div>
+                         {primarySpec && (
+                           <div className="mb-4 bg-amber-600/5 p-4 rounded-2xl border border-amber-600/10">
+                              <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest mb-1">Primary Specialization</p>
+                              <div className="flex items-center space-x-2">
+                                 <span className="text-xl">{getSpecIcon(primarySpec)}</span>
+                                 <span className="text-sm font-black text-gray-800 uppercase tracking-tight">{primarySpec}</span>
+                              </div>
+                           </div>
+                         )}
 
-                       <button 
-                        onClick={() => window.open(`tel:${workshop.contact}`)}
-                        className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
-                       >
-                         Contact Partner Terminal
-                       </button>
-                    </div>
-                  ))}
+                         <div className="space-y-4 mb-6">
+                            <div className="p-3 bg-gray-50 rounded-xl flex items-center space-x-3">
+                               <span className="text-gray-400">📍</span>
+                               <span className="text-[11px] font-bold text-gray-600 uppercase truncate">{workshop.location}</span>
+                            </div>
+                            {otherSpecs.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                 {otherSpecs.map((spec, i) => (
+                                   <span key={i} className="px-2.5 py-1 bg-white text-gray-400 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1.5">
+                                     <span>{getSpecIcon(spec)}</span>
+                                     <span>{spec}</span>
+                                   </span>
+                                 ))}
+                              </div>
+                            )}
+                         </div>
+
+                         <div className="flex gap-2">
+                            <button 
+                              onClick={() => window.open(`tel:${workshop.contact}`)}
+                              className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg"
+                            >
+                              Call
+                            </button>
+                            <button 
+                              onClick={() => window.open(`https://wa.me/${formatForWhatsApp(workshop.contact)}`, '_blank')}
+                              className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg"
+                            >
+                              WhatsApp
+                            </button>
+                         </div>
+                      </div>
+                    );
+                  })}
                </div>
             </div>
           )}
@@ -505,12 +565,14 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
            <div className="bg-gray-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
               <div className="relative z-10">
-                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Workshop Partners</h4>
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Top Rated Partners</h4>
                 <div className="space-y-4">
-                   {workshops.slice(0, 3).map(w => (
+                   {workshops.sort((a,b) => b.rating - a.rating).slice(0, 3).map(w => (
                      <div key={w.id} className="flex items-center justify-between group/ws">
                         <div className="flex items-center space-x-4">
-                           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover/ws:bg-amber-500 transition-colors">🏪</div>
+                           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover/ws:bg-amber-500 transition-colors">
+                             {w.specialization && w.specialization.length > 0 ? getSpecIcon(w.specialization[0]) : '🏪'}
+                           </div>
                            <div>
                               <p className="text-xs font-black uppercase tracking-tight">{w.name}</p>
                               <p className="text-[9px] text-gray-500 font-bold uppercase">{w.city}</p>
@@ -676,6 +738,16 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     />
                  </div>
                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Specializations (Comma separated)</label>
+                    <input 
+                      type="text" 
+                      name="specializations"
+                      defaultValue={(workshopFormData.specialization || []).join(', ')}
+                      placeholder="e.g. Engines, Tyres, Electronics"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm"
+                    />
+                 </div>
+                 <div className="md:col-span-2">
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Full Physical Coordinates</label>
                     <input 
                       type="text" 
@@ -717,7 +789,9 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     className="w-full flex items-center justify-between p-5 rounded-2xl border border-gray-100 hover:bg-amber-50 hover:border-amber-200 transition-all text-left group"
                    >
                      <div className="flex items-center space-x-4">
-                       <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors">🏪</div>
+                       <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                         {w.specialization && w.specialization.length > 0 ? getSpecIcon(w.specialization[0]) : '🏪'}
+                       </div>
                        <div>
                          <span className="font-black text-gray-800 block uppercase text-xs">{w.name}</span>
                          <span className="text-[9px] text-gray-400 uppercase font-black tracking-widest">{w.location}</span>

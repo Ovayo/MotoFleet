@@ -36,10 +36,11 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logFileInputRef = useRef<HTMLInputElement>(null);
   const accidentFileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'portfolio' | 'service'>('portfolio');
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'safety' | 'service'>('portfolio');
   const [showLogForm, setShowLogForm] = useState(false);
   const [showFineForm, setShowFineForm] = useState(false);
   const [showAccidentForm, setShowAccidentForm] = useState(false);
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
 
   const [newLog, setNewLog] = useState<Omit<MaintenanceRecord, 'id'>>({
     bikeId: bike?.id || '',
@@ -164,10 +165,11 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
       <div className="flex bg-white p-2 rounded-3xl border border-gray-100 shadow-sm w-full md:w-fit mx-auto sticky top-24 z-30 backdrop-blur-md bg-white/80">
         <button onClick={() => setActiveTab('portfolio')} className={`px-10 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'portfolio' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400'}`}>💰 Portfolio</button>
+        <button onClick={() => setActiveTab('safety')} className={`px-10 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'safety' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400'}`}>🛡️ Safety</button>
         <button onClick={() => setActiveTab('service')} className={`px-10 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'service' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-400'}`}>🔧 Service</button>
       </div>
 
-      {activeTab === 'portfolio' ? (
+      {activeTab === 'portfolio' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
@@ -175,7 +177,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
               <h3 className={`text-4xl font-black ${stats.weeklyStanding >= 0 ? 'text-green-600' : 'text-red-500'}`}>R{Math.abs(stats.weeklyStanding)}</h3>
               <p className="text-[9px] text-gray-400 font-black uppercase mt-1">Paid: R{stats.paidThisWeek} / Target: R{stats.targetThisWeek}</p>
             </div>
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+            <div onClick={() => setActiveTab('safety')} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Active Incident Log</p>
               <h3 className={`text-4xl font-black ${stats.accidentsCount > 0 ? 'text-red-500' : 'text-gray-800'}`}>{stats.accidentsCount} Reports</h3>
               <p className="text-[9px] text-gray-400 font-black uppercase mt-1">Safe Driving Record Status</p>
@@ -187,13 +189,95 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'safety' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+           <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-8">
+              <div className="flex justify-between items-center mb-8">
+                 <div>
+                    <h3 className="font-black text-gray-800 uppercase text-xs tracking-widest">Incident Registry</h3>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">Official safety declarations for your profile</p>
+                 </div>
+                 <button onClick={() => setShowAccidentForm(true)} className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest">Report New Accident</button>
+              </div>
+
+              <div className="space-y-4">
+                 {stats.driverAccidents.length === 0 ? (
+                    <div className="py-20 text-center flex flex-col items-center">
+                       <div className="text-4xl mb-4 opacity-20">🛡️</div>
+                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Your Safety Record is Clear</p>
+                    </div>
+                 ) : (
+                    stats.driverAccidents.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(acc => (
+                       <div key={acc.id} className="p-6 rounded-[2rem] bg-gray-50 border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                             <div className="flex items-center space-x-3">
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                   acc.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>
+                                   {acc.status}
+                                </span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(acc.date).toLocaleDateString()}</span>
+                             </div>
+                             <h4 className="font-black text-gray-800 uppercase tracking-tight">{acc.location}</h4>
+                             <p className="text-xs text-gray-600 italic leading-relaxed">"{acc.description}"</p>
+                             {acc.thirdPartyDetails && (
+                                <p className="text-[9px] font-bold text-gray-400 uppercase mt-2">3rd Party: {acc.thirdPartyDetails}</p>
+                             )}
+                          </div>
+                          <div className="flex items-center space-x-2 shrink-0">
+                             {acc.attachmentUrl && (
+                                <button 
+                                   onClick={() => setViewingAttachment(acc.attachmentUrl!)}
+                                   className="p-3 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors"
+                                   title="View Evidence"
+                                >
+                                   📸
+                                </button>
+                             )}
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'service' && (
         <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden p-8">
            <div className="flex justify-between items-center mb-8">
-              <h3 className="font-black text-gray-800 uppercase text-xs tracking-widest">Service Hub</h3>
+              <div>
+                 <h3 className="font-black text-gray-800 uppercase text-xs tracking-widest">Service Hub</h3>
+                 <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">Vehicle maintenance and technical logs</p>
+              </div>
               <button onClick={() => setShowLogForm(true)} className="bg-amber-600 text-white px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest">+ Log Maintenance</button>
            </div>
-           {/* Maintenance list logic similar to existing would go here */}
+           
+           <div className="space-y-4">
+              {maintenance.filter(m => m.bikeId === bike?.id).length === 0 ? (
+                 <div className="py-20 text-center flex flex-col items-center">
+                    <div className="text-4xl mb-4 opacity-20">🔧</div>
+                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No Technical Logs for this vehicle</p>
+                 </div>
+              ) : (
+                 maintenance.filter(m => m.bikeId === bike?.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                    <div key={record.id} className="p-5 rounded-[2rem] bg-gray-50 border border-gray-100 flex items-center justify-between">
+                       <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-lg shadow-sm">
+                             {record.serviceType === 'fuel' ? '⛽' : '🛠️'}
+                          </div>
+                          <div>
+                             <p className="font-black text-gray-800 text-sm uppercase leading-none">{record.description}</p>
+                             <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">{new Date(record.date).toLocaleDateString()}</p>
+                          </div>
+                       </div>
+                       <span className="font-black text-gray-900 text-sm">R{record.cost}</span>
+                    </div>
+                 ))
+              )}
+           </div>
         </div>
       )}
 
@@ -243,11 +327,55 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
         </div>
       )}
 
-      {/* Existing form placeholders */}
+      {/* Attachment Viewer */}
+      {viewingAttachment && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[300] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[3rem] overflow-hidden max-w-4xl w-full flex flex-col animate-in zoom-in duration-300">
+              <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                 <h3 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">Evidence Viewer</h3>
+                 <button onClick={() => setViewingAttachment(null)} className="text-gray-400 hover:text-gray-900 text-4xl leading-none">&times;</button>
+              </div>
+              <div className="bg-gray-100 p-6 flex items-center justify-center min-h-[50vh]">
+                 <img src={viewingAttachment} className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl" />
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Log Form Modal Placeholder */}
       {showLogForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-           {/* Add maintenance log logic here */}
-           <button onClick={() => setShowLogForm(false)} className="text-white">Close</button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+           <form onSubmit={handleLogSubmit} className="bg-white rounded-[3rem] shadow-2xl max-w-xl w-full p-10 space-y-8 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-6">
+                 <div>
+                   <h3 className="text-2xl font-black text-amber-600 uppercase tracking-tight">Log Maintenance</h3>
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Operator Self-Registry</p>
+                 </div>
+                 <button type="button" onClick={() => setShowLogForm(false)} className="text-gray-300 hover:text-red-500 text-5xl leading-none">&times;</button>
+              </div>
+              
+              <div className="space-y-4">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Description</label>
+                    <input type="text" required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value})} placeholder="e.g. Oil top-up" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cost (R)</label>
+                    <input type="number" required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={newLog.cost || ''} onChange={e => setNewLog({...newLog, cost: Number(e.target.value)})} placeholder="0.00" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
+                    <select className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" value={newLog.serviceType} onChange={e => setNewLog({...newLog, serviceType: e.target.value as any})}>
+                       <option value="fuel">Fuel</option>
+                       <option value="oil">Oil</option>
+                       <option value="parts">Parts</option>
+                       <option value="repair">Repair</option>
+                    </select>
+                 </div>
+              </div>
+
+              <button type="submit" className="w-full bg-amber-600 text-white py-6 rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-amber-200 hover:bg-amber-700 transition-all active:scale-95">Authorize Technical Log</button>
+           </form>
         </div>
       )}
     </div>
