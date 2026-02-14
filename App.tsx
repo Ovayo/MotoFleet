@@ -296,6 +296,7 @@ const App: React.FC = () => {
             onAddPayment={handleAddPayment} 
             onUpdatePayment={handleUpdatePayment}
             onDeletePayment={handleDeletePayment}
+            onUpdateDriver={handleUpdateDriver}
             weeklyTarget={WEEKLY_TARGET} 
           />
         );

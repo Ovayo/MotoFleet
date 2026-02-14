@@ -8,6 +8,7 @@ interface PaymentTrackingProps {
   onAddPayment: (payment: Omit<Payment, 'id'>) => void;
   onUpdatePayment: (id: string, amount: number) => void;
   onDeletePayment: (id: string) => void;
+  onUpdateDriver: (driver: Driver) => void;
   weeklyTarget: number;
 }
 
@@ -17,6 +18,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   onAddPayment, 
   onUpdatePayment,
   onDeletePayment,
+  onUpdateDriver,
   weeklyTarget 
 }) => {
   const [showForm, setShowForm] = useState(false);
@@ -26,8 +28,12 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   const [filterArrearsOnly, setFilterArrearsOnly] = useState(false);
   
   const [editingCell, setEditingCell] = useState<{ driverId: string, weekIndex: number } | null>(null);
+  const [editingTargetDriverId, setEditingTargetDriverId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [targetEditValue, setTargetEditValue] = useState<string>('');
+  
   const editInputRef = useRef<HTMLInputElement>(null);
+  const targetInputRef = useRef<HTMLInputElement>(null);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -46,7 +52,6 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     type: 'rental' as const
   });
 
-  // Automatically update the amount when the driver is changed in the form
   const handleDriverChangeInForm = (driverId: string) => {
     const driver = activeDrivers.find(d => d.id === driverId);
     setNewPayment(prev => ({
@@ -149,6 +154,11 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     }
   };
 
+  const handleTargetClick = (driver: Driver) => {
+    setEditingTargetDriverId(driver.id);
+    setTargetEditValue((driver.weeklyTarget || weeklyTarget).toString());
+  };
+
   const saveEdit = () => {
     if (!editingCell) return;
     const { driverId, weekIndex } = editingCell;
@@ -178,6 +188,16 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     setEditingCell(null);
   };
 
+  const saveTargetEdit = () => {
+    if (!editingTargetDriverId) return;
+    const driver = drivers.find(d => d.id === editingTargetDriverId);
+    const newVal = parseFloat(targetEditValue);
+    if (driver && !isNaN(newVal) && newVal >= 0) {
+      onUpdateDriver({ ...driver, weeklyTarget: newVal });
+    }
+    setEditingTargetDriverId(null);
+  };
+
   const handleCalendarDayClick = (day: number, currentMonth: boolean) => {
     if (!currentMonth) return;
     const dateStr = new Date(selectedYear, selectedMonth, day).toISOString().split('T')[0];
@@ -191,7 +211,11 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
       editInputRef.current.focus();
       editInputRef.current.select();
     }
-  }, [editingCell]);
+    if (editingTargetDriverId && targetInputRef.current) {
+      targetInputRef.current.focus();
+      targetInputRef.current.select();
+    }
+  }, [editingCell, editingTargetDriverId]);
 
   return (
     <div className="space-y-6">
@@ -268,7 +292,6 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
               <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Post Entry</button>
             </div>
           </div>
-          <p className="mt-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Note: Amount defaults to the selected operator's individual target.</p>
         </form>
       )}
 
@@ -290,11 +313,10 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                   getWeeklyPaymentsForSlot(driver.id, i).reduce((a, b) => a + b.amount, 0)
                 );
                 const monthlyTotal = weeklyPaidSums.reduce((a, b) => a + b, 0);
-                
-                // CRITICAL: Explicitly use driver's individual target with fleet fallback
                 const currentTarget = driver.weeklyTarget || weeklyTarget;
                 const monthlyDue = weeksInMonth * currentTarget;
                 const monthlyBalance = monthlyTotal - monthlyDue;
+                const isEditingTarget = editingTargetDriverId === driver.id;
 
                 return (
                   <tr key={driver.id} className="hover:bg-gray-50/50 transition-colors group">
@@ -330,10 +352,20 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                     </td>
                     <td className="px-8 py-6 text-center bg-gray-50/30">
                       <div className="flex flex-col items-center">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black border ${driver.weeklyTarget ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                          R{currentTarget}
-                        </span>
-                        {driver.weeklyTarget && <span className="text-[7px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Driver Specific</span>}
+                        {isEditingTarget ? (
+                           <input ref={targetInputRef} type="number" className="w-20 px-2 py-1.5 rounded-lg border-2 border-indigo-500 text-center font-black text-[10px] outline-none" value={targetEditValue} onChange={e => setTargetEditValue(e.target.value)} onBlur={saveTargetEdit} onKeyDown={e => e.key === 'Enter' && saveTargetEdit()} />
+                        ) : (
+                          <div 
+                            onClick={() => handleTargetClick(driver)}
+                            className="group/target cursor-pointer"
+                          >
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all group-hover/target:bg-indigo-50 ${driver.weeklyTarget ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              R{currentTarget}
+                            </span>
+                            <div className="opacity-0 group-hover/target:opacity-100 transition-opacity text-[6px] font-black text-indigo-400 uppercase mt-0.5">Click to edit</div>
+                          </div>
+                        )}
+                        {driver.weeklyTarget && !isEditingTarget && <span className="text-[7px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Driver Specific</span>}
                       </div>
                     </td>
                   </tr>

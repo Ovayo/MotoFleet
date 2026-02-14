@@ -270,12 +270,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 <input name="contact" value={formData.contact} onChange={handleInputChange} required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm" placeholder="072 123 4567" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Rental Tier Target (R)</label>
-                <select name="weeklyTarget" value={formData.weeklyTarget} onChange={handleInputChange} className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-sm appearance-none cursor-pointer">
-                  <option value={600}>R600 (Lower Tier / CTN / EL)</option>
-                  <option value={650}>R650 (Standard JHB Tier)</option>
-                  <option value={700}>R700 (Premium Fleet)</option>
-                </select>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Rental Target (R / week)</label>
+                <input type="number" name="weeklyTarget" value={formData.weeklyTarget} onChange={handleInputChange} required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-sm" placeholder="e.g. 650" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">National ID / Passport</label>
@@ -371,7 +367,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {displayDrivers.map(driver => {
-          const assignedBike = bikes.find(b => b.assignedDriverId === driver.id);
+          const assignedBike = bikes.find(b => b.id === driver.id);
           const payStatus = getPaymentStatus(driver);
           const balance = getFullBalance(driver);
           const unpaidFineTotal = getUnpaidFines(driver.id);
