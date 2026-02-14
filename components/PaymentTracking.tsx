@@ -40,10 +40,6 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Dynamic year range: 5 years back to 1 year forward
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
-
   const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const activeDrivers = useMemo(() => drivers.filter(d => !d.isArchived), [drivers]);
@@ -113,7 +109,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   };
 
   const collectionStats = useMemo(() => {
-    const currentSimulatedWeek = 4; // Maintaining consistency with simulated dashboard week
+    const CURRENT_WEEK = 4;
     const driverData = activeDrivers.map(d => {
       const total = filteredPayments.filter(p => p.driverId === d.id).reduce((acc, p) => acc + p.amount, 0);
       const target = d.weeklyTarget || weeklyTarget;
@@ -128,14 +124,13 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     const totalCollected = driverData.reduce((acc, d) => acc + d.total, 0);
     const collectionRate = totalDueFleet > 0 ? Math.round((totalCollected / totalDueFleet) * 100) : 100;
     
-    // Calculate weekly outstanding for active week (Simulated as Week 4 for current month/year)
-    const isCurrentView = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
-    const totalPaidWeek = isCurrentView ? payments.filter(p => p.weekNumber === currentSimulatedWeek && new Date(p.date).getMonth() === selectedMonth && new Date(p.date).getFullYear() === selectedYear).reduce((acc, p) => acc + p.amount, 0) : 0;
-    const totalDueWeek = isCurrentView ? activeDrivers.reduce((acc, d) => acc + (d.weeklyTarget || weeklyTarget), 0) : 0;
-    const remainingDueWeek = isCurrentView ? Math.max(0, totalDueWeek - totalPaidWeek) : 0;
+    // Calculate weekly outstanding for active week (Simulated as Week 4)
+    const totalPaidWeek = payments.filter(p => p.weekNumber === CURRENT_WEEK).reduce((acc, p) => acc + p.amount, 0);
+    const totalDueWeek = activeDrivers.reduce((acc, d) => acc + (d.weeklyTarget || weeklyTarget), 0);
+    const remainingDueWeek = Math.max(0, totalDueWeek - totalPaidWeek);
 
-    return { totalArrears, overdueCount, collectionRate, driverData, remainingDueWeek, isCurrentView };
-  }, [activeDrivers, filteredPayments, weeksInMonth, weeklyTarget, payments, selectedMonth, selectedYear]);
+    return { totalArrears, overdueCount, collectionRate, driverData, remainingDueWeek };
+  }, [activeDrivers, filteredPayments, weeksInMonth, weeklyTarget, payments]);
 
   const displayDrivers = useMemo(() => {
     const list = activeDrivers;
@@ -233,32 +228,28 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Arrears</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Arrears</p>
             <h3 className={`text-2xl font-black ${collectionStats.totalArrears > 0 ? 'text-red-600' : 'text-gray-800'}`}>R{collectionStats.totalArrears.toLocaleString()}</h3>
           </div>
           <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-xl">💸</div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-              {collectionStats.isCurrentView ? 'Outstanding (Week)' : 'Outstanding (Month)'}
-            </p>
-            <h3 className={`text-2xl font-black text-orange-600`}>
-              R{(collectionStats.isCurrentView ? collectionStats.remainingDueWeek : collectionStats.totalArrears).toLocaleString()}
-            </h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding (Week)</p>
+            <h3 className={`text-2xl font-black text-orange-600`}>R{collectionStats.remainingDueWeek.toLocaleString()}</h3>
           </div>
           <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-xl">⌛</div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Overdue Operators</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Overdue Accounts</p>
             <h3 className="text-2xl font-black text-gray-800">{collectionStats.overdueCount} Active</h3>
           </div>
           <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl">⚠️</div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">View Collection Yield</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Fleet Collection</p>
             <span className="text-[10px] font-black text-blue-600">{collectionStats.collectionRate}%</span>
           </div>
           <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
@@ -269,9 +260,9 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Financial Ledger</h2>
+          <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Payment Ledger</h2>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            Audit logs for {months[selectedMonth]} {selectedYear}
+            {months[selectedMonth]} {selectedYear} • Managed by Fleet Logistics
           </p>
         </div>
         
@@ -280,16 +271,11 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
             <button onClick={() => setViewMode('ledger')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'ledger' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}>Ledger</button>
             <button onClick={() => setViewMode('calendar')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}>Calendar</button>
           </div>
-          <div className="flex items-center space-x-2">
-            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500/10 outline-none">
-              {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
-            </select>
-            <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))} className="bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500/10 outline-none">
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 font-black uppercase text-[10px] tracking-widest ml-2">
-            {showForm ? 'Cancel' : '+ Manual Log'}
+          <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500/10 outline-none">
+            {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
+          </select>
+          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 font-black uppercase text-[10px] tracking-widest">
+            {showForm ? 'Cancel' : '+ Manual Entry'}
           </button>
         </div>
       </div>
@@ -316,7 +302,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
               <input type="date" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} />
             </div>
             <div className="flex items-end">
-              <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Commit Transaction</button>
+              <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Post Entry</button>
             </div>
           </div>
         </form>
@@ -327,11 +313,11 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50/50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-widest">
               <tr>
-                <th className="px-8 py-5 sticky left-0 bg-gray-50/50 z-10">Asset Operator</th>
+                <th className="px-8 py-5 sticky left-0 bg-gray-50/50 z-10">Operator Hub</th>
                 {[...Array(weeksInMonth)].map((_, i) => <th key={i} className="px-4 py-5 text-center">Week {i + 1}</th>)}
-                <th className="px-8 py-5 text-right">Collected</th>
-                <th className="px-8 py-5 text-right">Yield Balance</th>
-                <th className="px-8 py-5 text-center bg-gray-100/30">Contract Target</th>
+                <th className="px-8 py-5 text-right">Settled</th>
+                <th className="px-8 py-5 text-right">Balance</th>
+                <th className="px-8 py-5 text-center bg-gray-100/30">Set Target</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -350,7 +336,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                     <td className="px-8 py-6 sticky left-0 bg-white group-hover:bg-gray-50/50 transition-colors">
                       <div className="font-black text-gray-800 whitespace-nowrap uppercase tracking-tight leading-tight">{driver.name}</div>
                       <div className={`text-[8px] uppercase font-bold tracking-widest mt-1 ${monthlyBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {monthlyBalance >= 0 ? 'Status: Nominal' : 'Status: Arrears'}
+                        {monthlyBalance >= 0 ? 'Account Health: Positive' : 'Account Health: Arrears'}
                       </div>
                     </td>
                     
@@ -366,7 +352,7 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                               onClick={() => handleCellClick(driver.id, i, amount)}
                               className={`inline-block px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter min-w-[70px] transition-all ${isFullyPaid ? 'bg-green-100 text-green-700 hover:bg-green-200' : amount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-300 hover:bg-blue-600 hover:text-white'}`}
                             >
-                              {amount > 0 ? `R${amount}` : '+ Post'}
+                              {amount > 0 ? `R${amount}` : '+ Pay'}
                             </button>
                           )}
                         </td>
@@ -389,9 +375,10 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
                             <span className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all group-hover/target:bg-indigo-50 ${driver.weeklyTarget ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                               R{currentTarget}
                             </span>
-                            <div className="opacity-0 group-hover/target:opacity-100 transition-opacity text-[6px] font-black text-indigo-400 uppercase mt-0.5">Edit Rate</div>
+                            <div className="opacity-0 group-hover/target:opacity-100 transition-opacity text-[6px] font-black text-indigo-400 uppercase mt-0.5">Click to edit</div>
                           </div>
                         )}
+                        {driver.weeklyTarget && !isEditingTarget && <span className="text-[7px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Driver Specific</span>}
                       </div>
                     </td>
                   </tr>
