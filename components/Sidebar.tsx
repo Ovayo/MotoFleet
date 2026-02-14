@@ -7,17 +7,21 @@ interface SidebarProps {
   setView: (view: View) => void;
   role: 'admin' | 'driver' | 'mechanic';
   isAdminAuthenticated: boolean;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
   onSwitchMode: (role: 'admin' | 'driver' | 'mechanic') => void;
   hideSwitcher?: boolean;
+}
+
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: string;
 }
 
 interface MenuGroup {
   id: string;
   label: string;
   icon: string;
-  children?: { id: string; label: string; icon: string }[];
+  children?: MenuItem[];
   viewId?: View;
 }
 
@@ -26,14 +30,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   setView, 
   role, 
   isAdminAuthenticated, 
-  isDarkMode,
-  toggleDarkMode,
   onSwitchMode, 
   hideSwitcher = false 
 }) => {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
+  // Grouping logic for Admin role to fit on mobile without scroll
   const adminGroups: MenuGroup[] = [
     { id: 'g-hub', label: 'Hub', icon: '📊', viewId: 'dashboard' },
     { 
@@ -66,60 +69,163 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  const groups = role === 'admin' ? adminGroups : role === 'mechanic' ? [
+  const mechanicGroups: MenuGroup[] = [
     { id: 'mechanic-portal', label: 'Technical', icon: '🛠️', viewId: 'mechanic-portal' },
     { id: 'maintenance', label: 'History', icon: '📋', viewId: 'maintenance' },
-  ] : [
+  ];
+
+  const driverGroups: MenuGroup[] = [
     { id: 'driver-profile', label: 'Portfolio', icon: '👤', viewId: 'driver-profile' },
   ];
 
+  const groups = role === 'admin' ? adminGroups : role === 'mechanic' ? mechanicGroups : driverGroups;
   const themeColor = role === 'admin' ? 'blue' : role === 'mechanic' ? 'amber' : 'green';
-  const colorMap: Record<string, string> = { blue: 'bg-blue-600', amber: 'bg-amber-600', green: 'bg-green-600' };
-  const textActiveMap: Record<string, string> = { blue: 'text-blue-600', amber: 'text-amber-600', green: 'text-green-600' };
+
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-600',
+    amber: 'bg-amber-600',
+    green: 'bg-green-600'
+  };
+
+  const textActiveMap: Record<string, string> = {
+    blue: 'text-blue-600',
+    amber: 'text-amber-600',
+    green: 'text-green-600'
+  };
+
+  const handleGroupClick = (group: MenuGroup) => {
+    if (group.viewId) {
+      setView(group.viewId);
+      setOpenGroup(null);
+    } else {
+      setOpenGroup(openGroup === group.id ? null : group.id);
+    }
+  };
+
+  // Close sub-menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setOpenGroup(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <>
-      <nav ref={mobileMenuRef} className={`md:hidden fixed bottom-0 left-0 right-0 z-[110] backdrop-blur-2xl border-t pb-safe shadow-[0_-15px_35px_rgba(0,0,0,0.08)] ${isDarkMode ? 'bg-black/90 border-white/5' : 'bg-white/90 border-gray-100'}`}>
+      {/* MOBILE HIERARCHICAL NAVIGATION */}
+      <nav ref={mobileMenuRef} className="md:hidden fixed bottom-0 left-0 right-0 z-[110] bg-white/90 backdrop-blur-2xl border-t border-gray-100 pb-safe shadow-[0_-15px_35px_rgba(0,0,0,0.08)]">
+        
+        {/* SUB-MENU OVERLAY */}
+        {groups.map(group => group.children && openGroup === group.id && (
+          <div key={`sub-${group.id}`} className="absolute bottom-20 left-4 right-4 bg-white/95 backdrop-blur-3xl rounded-[2.5rem] p-4 shadow-2xl border border-gray-100 animate-in slide-in-from-bottom-6 duration-300">
+            <div className="p-3 border-b border-gray-50 mb-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{group.label} Operations</p>
+            </div>
+            <div className="grid grid-cols-1 gap-1">
+              {group.children.map(child => (
+                <button
+                  key={child.id}
+                  onClick={() => {
+                    setView(child.id as View);
+                    setOpenGroup(null);
+                  }}
+                  className={`flex items-center space-x-4 p-4 rounded-2xl transition-all ${
+                    activeView === child.id ? 'bg-gray-50 border-gray-100 shadow-inner' : 'hover:bg-gray-50/50'
+                  }`}
+                >
+                  <span className="text-2xl">{child.icon}</span>
+                  <div className="text-left">
+                    <span className={`block text-xs font-black uppercase tracking-tight ${activeView === child.id ? textActiveMap[themeColor] : 'text-gray-800'}`}>
+                      {child.label}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* MAIN DOCK */}
         <div className="flex items-center justify-around h-20 px-2 relative">
-          {groups.map((group) => (
-            <button
-              key={group.id}
-              onClick={() => group.viewId ? setView(group.viewId) : setOpenGroup(openGroup === group.id ? null : group.id)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${activeView === group.viewId ? textActiveMap[themeColor] : 'text-gray-400'}`}
+          {groups.map((group) => {
+            const isAnyChildActive = group.children?.some(c => c.id === activeView);
+            const isActive = activeView === group.viewId || isAnyChildActive;
+            const isOpen = openGroup === group.id;
+
+            return (
+              <button
+                key={group.id}
+                onClick={() => handleGroupClick(group)}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+                  isActive || isOpen ? textActiveMap[themeColor] : 'text-gray-400'
+                }`}
+              >
+                <div className={`relative transition-transform duration-300 ${isOpen ? 'scale-125' : ''}`}>
+                  <span className={`text-2xl mb-0.5 transition-transform ${isActive ? 'scale-110' : 'opacity-70'}`}>
+                    {group.icon}
+                  </span>
+                  {group.children && (
+                    <div className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-gray-100 rounded-full border border-white flex items-center justify-center">
+                      <span className="text-[7px] font-black text-gray-500">{group.children.length}</span>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-[8px] font-black uppercase tracking-tight transition-all ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                  {group.label}
+                </span>
+                {isActive && (
+                  <div className={`absolute top-0 w-8 h-1 rounded-b-full ${colorMap[themeColor]}`}></div>
+                )}
+              </button>
+            );
+          })}
+          
+          {/* Identity Switcher Slot */}
+          {!hideSwitcher && isAdminAuthenticated && (
+            <button 
+              onClick={() => {
+                const roles: ('admin' | 'mechanic' | 'driver')[] = ['admin', 'mechanic', 'driver'];
+                const nextIndex = (roles.indexOf(role) + 1) % roles.length;
+                onSwitchMode(roles[nextIndex]);
+                setOpenGroup(null);
+              }}
+              className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 group"
             >
-              <span className="text-2xl mb-0.5">{group.icon}</span>
-              <span className="text-[8px] font-black uppercase tracking-tight">{group.label}</span>
-              {activeView === group.viewId && <div className={`absolute top-0 w-8 h-1 rounded-b-full ${colorMap[themeColor]}`}></div>}
+              <div className="w-9 h-9 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-lg shadow-inner group-active:scale-90 transition-transform">
+                🔄
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-tight mt-0.5 opacity-60">Mode</span>
             </button>
-          ))}
-          <button onClick={toggleDarkMode} className="flex flex-col items-center justify-center flex-1 h-full text-gray-400">
-            <span className="text-2xl mb-0.5">{isDarkMode ? '🌙' : '☀️'}</span>
-            <span className="text-[8px] font-black uppercase tracking-tight">Mode</span>
-          </button>
+          )}
         </div>
       </nav>
 
-      <aside className={`hidden md:flex w-64 fixed h-full z-50 flex-col backdrop-blur-3xl border-r transition-colors duration-500 ${isDarkMode ? 'bg-black/60 border-white/5' : 'bg-white/40 border-white/60'}`}>
-        <div className="p-8 h-full flex flex-col">
-          <div className="flex items-center space-x-4 mb-14 group cursor-pointer">
-            <div className={`${colorMap[themeColor]} w-12 h-12 rounded-[1.2rem] flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-12 duration-500`}>
-               <span className="text-white text-xl font-black tracking-tighter">MF</span>
+      {/* DESKTOP SIDEBAR (Unchanged for high-productivity horizontal space) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 fixed h-full z-50 flex-col">
+        <div className="p-6 h-full flex flex-col">
+          <div className="flex items-center space-x-3 mb-10">
+            <div className={`${colorMap[themeColor]} p-2.5 rounded-xl flex items-center justify-center shadow-lg shadow-gray-100`}>
+               <span className="text-white text-lg font-black tracking-tight">MF</span>
             </div>
-            <h2 className={`text-xl font-black tracking-tighter uppercase leading-none ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>MotoFleet</h2>
+            <h2 className="text-lg font-black text-gray-800 tracking-tight uppercase">MotoFleet</h2>
           </div>
           
-          <nav className="space-y-2 flex-1 overflow-y-auto pr-3 no-scrollbar">
+          <nav className="space-y-1.5 flex-1 overflow-y-auto pr-2 no-scrollbar">
+            {/* Desktop Flattened View for quick access */}
             {(role === 'admin' ? [
               { id: 'dashboard', label: 'Overview', icon: '📊' },
-              { id: 'fleet', label: 'Asset Grid', icon: '🏍️' },
-              { id: 'drivers', label: 'Operations', icon: '👤' },
-              { id: 'payments', label: 'Ledger', icon: '💰' },
-              { id: 'maintenance', label: 'Technical', icon: '🔧' },
-              { id: 'fines', label: 'Compliance', icon: '🚔' },
-              { id: 'communications', label: 'Comms Hub', icon: '📡' },
-              { id: 'tracking', label: 'Telemetry', icon: '📍' },
+              { id: 'fleet', label: 'Fleet', icon: '🏍️' },
+              { id: 'drivers', label: 'Operators', icon: '👤' },
+              { id: 'payments', label: 'Payments', icon: '💰' },
+              { id: 'maintenance', label: 'Service', icon: '🔧' },
+              { id: 'fines', label: 'Fines', icon: '🚔' },
+              { id: 'communications', label: 'Comms', icon: '📡' },
+              { id: 'tracking', label: 'Track', icon: '📍' },
             ] : role === 'mechanic' ? [
-              { id: 'mechanic-portal', label: 'Workshop', icon: '🛠️' },
+              { id: 'mechanic-portal', label: 'Technical', icon: '🛠️' },
               { id: 'maintenance', label: 'History', icon: '📋' },
             ] : [
               { id: 'driver-profile', label: 'Portfolio', icon: '👤' },
@@ -127,31 +233,43 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => setView(item.id as View)}
-                className={`w-full flex items-center space-x-4 px-6 py-4 rounded-[1.5rem] transition-all duration-300 relative ${activeView === item.id ? (isDarkMode ? 'bg-white text-black shadow-2xl scale-[1.02]' : 'bg-gray-900 text-white shadow-2xl scale-[1.02]') : (isDarkMode ? 'text-white/30 hover:bg-white/5 hover:text-white' : 'text-gray-400 hover:bg-white/60 hover:text-gray-900')}`}
+                className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${
+                  activeView === item.id
+                    ? `${colorMap[themeColor]} text-white font-bold translate-x-1 shadow-lg shadow-gray-100`
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">{item.label}</span>
+                <span className="text-xl opacity-80">{item.icon}</span>
+                <span className="text-sm font-bold uppercase tracking-wider text-[11px]">{item.label}</span>
               </button>
             ))}
           </nav>
 
-          <div className="mt-auto pt-8 border-t border-white/5 space-y-6">
-            <div className={`flex items-center justify-between rounded-2xl p-4 border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
-              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>Ambient Mode</span>
-              <button onClick={toggleDarkMode} className={`w-12 h-6 rounded-full relative transition-colors duration-500 flex items-center px-1 ${isDarkMode ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                <div className={`w-4 h-4 rounded-full shadow-lg transition-transform duration-500 transform ${isDarkMode ? 'translate-x-6 bg-white' : 'translate-x-0 bg-gray-500'}`}></div>
-              </button>
-            </div>
-            {!hideSwitcher && isAdminAuthenticated && (
+          {!hideSwitcher && isAdminAuthenticated && (
+            <div className="mt-auto pt-6 border-t border-gray-50">
+              <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 text-center">Identity Terminal</p>
               <div className="grid grid-cols-1 gap-2">
-                {['admin', 'mechanic', 'driver'].map(m => (
-                  <button key={m} onClick={() => onSwitchMode(m as any)} className={`px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${role === m ? `${colorMap[m === 'admin' ? 'blue' : m === 'mechanic' ? 'amber' : 'green']} text-white border-transparent` : (isDarkMode ? 'bg-white/5 text-white/30 border-white/5' : 'bg-white/40 text-gray-400 border-white/60')}`}>
-                    {m} hub
-                  </button>
-                ))}
+                <button 
+                  onClick={() => onSwitchMode('admin')} 
+                  className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${role === 'admin' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
+                >
+                  Admin Hub
+                </button>
+                <button 
+                  onClick={() => onSwitchMode('mechanic')} 
+                  className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${role === 'mechanic' ? 'bg-amber-600 text-white shadow-lg shadow-amber-100' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
+                >
+                  Mechanic Hub
+                </button>
+                <button 
+                  onClick={() => onSwitchMode('driver')} 
+                  className={`px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${role === 'driver' ? 'bg-green-600 text-white shadow-lg shadow-green-100' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
+                >
+                  Driver Hub
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </aside>
     </>

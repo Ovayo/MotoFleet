@@ -22,15 +22,44 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
   weeklyTarget 
 }) => {
   const [showForm, setShowForm] = useState(false);
+  const [viewMode, setViewMode] = useState<'ledger' | 'calendar'>('ledger');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [filterArrearsOnly, setFilterArrearsOnly] = useState(false);
   
+  const [editingCell, setEditingCell] = useState<{ driverId: string, weekIndex: number } | null>(null);
+  const [editingTargetDriverId, setEditingTargetDriverId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [targetEditValue, setTargetEditValue] = useState<string>('');
+  
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const targetInputRef = useRef<HTMLInputElement>(null);
+
   const months = [
-    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
   ];
 
+  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   const activeDrivers = useMemo(() => drivers.filter(d => !d.isArchived), [drivers]);
+
+  const [newPayment, setNewPayment] = useState({
+    driverId: activeDrivers[0]?.id || '',
+    amount: activeDrivers[0]?.weeklyTarget || weeklyTarget,
+    date: new Date().toISOString().split('T')[0],
+    weekNumber: 1,
+    type: 'rental' as const
+  });
+
+  const handleDriverChangeInForm = (driverId: string) => {
+    const driver = activeDrivers.find(d => d.id === driverId);
+    setNewPayment(prev => ({
+      ...prev,
+      driverId,
+      amount: driver?.weeklyTarget || weeklyTarget
+    }));
+  };
 
   const weeksInMonth = useMemo(() => {
     const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
@@ -38,134 +67,314 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
     return days > 28 ? 5 : 4;
   }, [selectedMonth, selectedYear]);
 
-  // Precise Monthly Financial Analytics
-  const stats = useMemo(() => {
-    const monthPayments = payments.filter(p => {
-      const d = new Date(p.date);
-      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
+    const padding = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    
+    const days: { day: number; currentMonth: boolean }[] = [];
+    
+    for (let i = padding - 1; i >= 0; i--) {
+      days.push({ day: daysInPrevMonth - i, currentMonth: false });
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ day: i, currentMonth: true });
+    }
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ day: i, currentMonth: false });
+    }
+    return days;
+  }, [selectedMonth, selectedYear]);
+
+  const filteredPayments = useMemo(() => {
+    return payments.filter(p => {
+      const pDate = new Date(p.date);
+      return pDate.getMonth() === selectedMonth && pDate.getFullYear() === selectedYear;
+    });
+  }, [payments, selectedMonth, selectedYear]);
+
+  const getWeeklyPaymentsForSlot = (driverId: string, weekIndex: number) => {
+    return filteredPayments.filter(p => {
+      if (p.driverId !== driverId) return false;
+      const day = new Date(p.date).getDate();
+      if (weekIndex === 0) return day >= 1 && day <= 7;
+      if (weekIndex === 1) return day >= 8 && day <= 14;
+      if (weekIndex === 2) return day >= 15 && day <= 21;
+      if (weekIndex === 3) return day >= 22 && day <= 28;
+      if (weekIndex === 4) return day >= 29;
+      return false;
+    });
+  };
+
+  const collectionStats = useMemo(() => {
+    const driverData = activeDrivers.map(d => {
+      const total = filteredPayments.filter(p => p.driverId === d.id).reduce((acc, p) => acc + p.amount, 0);
+      const target = d.weeklyTarget || weeklyTarget;
+      const due = weeksInMonth * target;
+      return { id: d.id, total, due, balance: total - due };
     });
 
-    const totalCollected = monthPayments.reduce((a, b) => a + b.amount, 0);
+    const totalArrears = driverData.filter(d => d.balance < 0).reduce((acc, d) => acc + Math.abs(d.balance), 0);
+    const overdueCount = driverData.filter(d => d.balance < 0).length;
     
-    const totalTarget = activeDrivers.reduce((acc, d) => {
-      const target = d.weeklyTarget || weeklyTarget;
-      return acc + (target * weeksInMonth);
-    }, 0);
+    const totalDueFleet = driverData.reduce((acc, d) => acc + d.due, 0);
+    const totalCollected = driverData.reduce((acc, d) => acc + d.total, 0);
+    const collectionRate = totalDueFleet > 0 ? Math.round((totalCollected / totalDueFleet) * 100) : 100;
+    const remainingDueMonth = Math.max(0, totalDueFleet - totalCollected);
 
-    const amountRemaining = Math.max(0, totalTarget - totalCollected);
-    const collectionRate = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 100;
+    return { totalArrears, overdueCount, collectionRate, driverData, remainingDueMonth };
+  }, [activeDrivers, filteredPayments, weeksInMonth, weeklyTarget]);
 
-    return { totalCollected, amountRemaining, collectionRate, totalTarget };
-  }, [payments, activeDrivers, selectedMonth, selectedYear, weeklyTarget, weeksInMonth]);
+  const displayDrivers = useMemo(() => {
+    const list = activeDrivers;
+    if (!filterArrearsOnly) return list;
+    return list.filter(d => {
+      const stats = collectionStats.driverData.find(sd => sd.id === d.id);
+      return stats && stats.balance < 0;
+    });
+  }, [activeDrivers, filterArrearsOnly, collectionStats]);
+
+  const handleCellClick = (driverId: string, weekIndex: number, currentAmount: number) => {
+    const driver = drivers.find(d => d.id === driverId);
+    const target = driver?.weeklyTarget || weeklyTarget;
+    if (currentAmount === 0) {
+      const day = (weekIndex * 7) + 1;
+      const date = new Date(selectedYear, selectedMonth, day).toISOString().split('T')[0];
+      onAddPayment({
+        driverId,
+        amount: target,
+        date,
+        weekNumber: weekIndex + 1,
+        type: 'rental'
+      });
+    } else {
+      setEditingCell({ driverId, weekIndex });
+      setEditValue(currentAmount.toString());
+    }
+  };
+
+  const handleTargetClick = (driver: Driver) => {
+    setEditingTargetDriverId(driver.id);
+    setTargetEditValue((driver.weeklyTarget || weeklyTarget).toString());
+  };
+
+  const saveEdit = () => {
+    if (!editingCell) return;
+    const { driverId, weekIndex } = editingCell;
+    const slotPayments = getWeeklyPaymentsForSlot(driverId, weekIndex);
+    const newVal = parseFloat(editValue);
+    
+    if (isNaN(newVal) || newVal <= 0) {
+      if (slotPayments.length > 0) {
+        slotPayments.forEach(p => onDeletePayment(p.id));
+      }
+    } else {
+      if (slotPayments.length > 0) {
+        onUpdatePayment(slotPayments[0].id, newVal);
+        slotPayments.slice(1).forEach(p => onDeletePayment(p.id));
+      } else {
+        const day = (weekIndex * 7) + 1;
+        const date = new Date(selectedYear, selectedMonth, day).toISOString().split('T')[0];
+        onAddPayment({
+          driverId,
+          amount: newVal,
+          date,
+          weekNumber: weekIndex + 1,
+          type: 'rental'
+        });
+      }
+    }
+    setEditingCell(null);
+  };
+
+  const saveTargetEdit = () => {
+    if (!editingTargetDriverId) return;
+    const driver = drivers.find(d => d.id === editingTargetDriverId);
+    const newVal = parseFloat(targetEditValue);
+    if (driver && !isNaN(newVal) && newVal >= 0) {
+      onUpdateDriver({ ...driver, weeklyTarget: newVal });
+    }
+    setEditingTargetDriverId(null);
+  };
+
+  const handleCalendarDayClick = (day: number, currentMonth: boolean) => {
+    if (!currentMonth) return;
+    const dateStr = new Date(selectedYear, selectedMonth, day).toISOString().split('T')[0];
+    const weekNum = Math.ceil(day / 7);
+    setNewPayment(prev => ({ ...prev, date: dateStr, weekNumber: weekNum }));
+    setShowForm(true);
+  };
+
+  useEffect(() => {
+    if (editingCell && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+    if (editingTargetDriverId && targetInputRef.current) {
+      targetInputRef.current.focus();
+      targetInputRef.current.select();
+    }
+  }, [editingCell, editingTargetDriverId]);
 
   return (
-    <div className="space-y-10">
-      {/* Financial Health Blade */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-2xl p-8 rounded-[3rem] shadow-sm border border-white/60 dark:border-white/5 flex items-center justify-between group hover:shadow-2xl transition-all duration-500">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-gray-400 dark:text-white/30 uppercase tracking-[0.3em] mb-2">Cycle Revenue</p>
-            <h3 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">R{stats.totalCollected.toLocaleString()}</h3>
-            <p className="text-[9px] font-black text-blue-500 mt-2 uppercase tracking-widest">Target: R{stats.totalTarget.toLocaleString()}</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Arrears</p>
+            <h3 className={`text-2xl font-black ${collectionStats.totalArrears > 0 ? 'text-red-600' : 'text-gray-800'}`}>R{collectionStats.totalArrears.toLocaleString()}</h3>
           </div>
-          <div className="text-3xl grayscale opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">💰</div>
+          <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-xl">💸</div>
         </div>
-
-        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-2xl p-8 rounded-[3rem] shadow-sm border border-white/60 dark:border-white/5 flex items-center justify-between group hover:shadow-2xl transition-all duration-500">
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-red-500/60 uppercase tracking-[0.3em] mb-2">Pending Collections</p>
-            <h3 className="text-4xl font-black text-red-500 tracking-tighter leading-none">R{stats.amountRemaining.toLocaleString()}</h3>
-            <p className="text-[9px] font-black text-gray-400 dark:text-white/20 mt-2 uppercase tracking-widest">Amount still to be paid</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding (Month)</p>
+            <h3 className={`text-2xl font-black text-orange-600`}>R{collectionStats.remainingDueMonth.toLocaleString()}</h3>
           </div>
-          <div className="text-3xl grayscale opacity-30 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">⏳</div>
+          <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-xl">⌛</div>
         </div>
-
-        <div className="bg-gray-900 dark:bg-black p-8 rounded-[3rem] shadow-2xl text-white flex flex-col justify-center border border-white/5">
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-[9px] font-black text-blue-400 uppercase tracking-[0.4em]">Settlement Progress</p>
-            <span className="text-[10px] font-black">{stats.collectionRate}%</span>
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Overdue Accounts</p>
+            <h3 className="text-2xl font-black text-gray-800">{collectionStats.overdueCount} Active</h3>
           </div>
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-             <div 
-               className="bg-blue-500 h-full transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.5)]" 
-               style={{ width: `${stats.collectionRate}%` }}
-             ></div>
+          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-xl">⚠️</div>
+        </div>
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Fleet Collection</p>
+            <span className="text-[10px] font-black text-blue-600">{collectionStats.collectionRate}%</span>
           </div>
-          <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mt-3 text-center">Month-to-date velocity</p>
+          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+             <div className="bg-blue-600 h-full transition-all duration-1000" style={{ width: `${collectionStats.collectionRate}%` }}></div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Global Ledger</h2>
-          <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-[0.4em] mt-2">
-            Fiscal Audit • {months[selectedMonth]} {selectedYear}
+          <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Payment Ledger</h2>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+            {months[selectedMonth]} {selectedYear} • Managed by Fleet Logistics
           </p>
         </div>
         
-        <div className="flex items-center space-x-3">
-          <select 
-            value={selectedMonth} 
-            onChange={e => setSelectedMonth(parseInt(e.target.value))} 
-            className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/60 dark:border-white/10 rounded-[1.5rem] px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] outline-none cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm dark:text-white"
-          >
+        <div className="flex items-center space-x-2">
+          <div className="bg-gray-100 p-1 rounded-xl flex mr-2">
+            <button onClick={() => setViewMode('ledger')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'ledger' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}>Ledger</button>
+            <button onClick={() => setViewMode('calendar')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}>Calendar</button>
+          </div>
+          <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500/10 outline-none">
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
-          <button 
-            onClick={() => setShowForm(true)}
-            className="bg-gray-900 dark:bg-blue-600 text-white px-10 py-5 rounded-[1.8rem] font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl shadow-gray-200 dark:shadow-blue-900/20 hover:scale-105 active:scale-95 transition-all"
-          >
-            + Post Entry
+          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 font-black uppercase text-[10px] tracking-widest">
+            {showForm ? 'Cancel' : '+ Manual Entry'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white/80 dark:bg-gray-900/60 backdrop-blur-3xl rounded-[3.5rem] shadow-sm border border-white/60 dark:border-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
+      {showForm && (
+        <form onSubmit={(e) => { e.preventDefault(); onAddPayment(newPayment); setShowForm(false); }} className="bg-white p-8 rounded-[2rem] shadow-xl border border-blue-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Operator</label>
+              <select 
+                className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                value={newPayment.driverId} 
+                onChange={e => handleDriverChangeInForm(e.target.value)}
+              >
+                {activeDrivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Amount (R)</label>
+              <input type="number" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: Number(e.target.value)})} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date</label>
+              <input type="date" className="w-full border-gray-100 rounded-xl p-3 bg-gray-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={newPayment.date} onChange={e => setNewPayment({...newPayment, date: e.target.value})} />
+            </div>
+            <div className="flex items-end">
+              <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100">Post Entry</button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {viewMode === 'ledger' ? (
+        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50/50 dark:bg-white/5 border-b border-gray-100/50 dark:border-white/5 text-[10px] font-black text-gray-400 dark:text-white/30 uppercase tracking-[0.3em]">
+            <thead className="bg-gray-50/50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-widest">
               <tr>
-                <th className="px-10 py-8">Operator node</th>
-                <th className="px-6 py-8 text-center">Month Target</th>
-                <th className="px-6 py-8 text-center">Settled</th>
-                <th className="px-6 py-8 text-center">Balance Due</th>
-                <th className="px-10 py-8 text-right">Status</th>
+                <th className="px-8 py-5 sticky left-0 bg-gray-50/50 z-10">Operator Hub</th>
+                {[...Array(weeksInMonth)].map((_, i) => <th key={i} className="px-4 py-5 text-center">Week {i + 1}</th>)}
+                <th className="px-8 py-5 text-right">Settled</th>
+                <th className="px-8 py-5 text-right">Balance</th>
+                <th className="px-8 py-5 text-center bg-gray-100/30">Set Target</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-white/5">
-              {activeDrivers.map(driver => {
-                const driverTarget = (driver.weeklyTarget || weeklyTarget) * weeksInMonth;
-                const driverPaid = payments
-                  .filter(p => p.driverId === driver.id && new Date(p.date).getMonth() === selectedMonth && new Date(p.date).getFullYear() === selectedYear)
-                  .reduce((a, b) => a + b.amount, 0);
-                const remaining = Math.max(0, driverTarget - driverPaid);
-                const isSettled = driverPaid >= driverTarget;
+            <tbody className="divide-y divide-gray-50">
+              {displayDrivers.map(driver => {
+                const weeklyPaidSums = [...Array(weeksInMonth)].map((_, i) => 
+                  getWeeklyPaymentsForSlot(driver.id, i).reduce((a, b) => a + b.amount, 0)
+                );
+                const monthlyTotal = weeklyPaidSums.reduce((a, b) => a + b, 0);
+                const currentTarget = driver.weeklyTarget || weeklyTarget;
+                const monthlyDue = weeksInMonth * currentTarget;
+                const monthlyBalance = monthlyTotal - monthlyDue;
+                const isEditingTarget = editingTargetDriverId === driver.id;
 
                 return (
-                  <tr key={driver.id} className="hover:bg-white dark:hover:bg-white/5 transition-all duration-500 group">
-                    <td className="px-10 py-8">
-                      <div className="font-black text-gray-900 dark:text-white uppercase tracking-tighter text-lg leading-none">{driver.name}</div>
-                      <div className="text-[8px] font-black text-blue-500 uppercase tracking-[0.3em] mt-2 group-hover:translate-x-1 transition-transform">Command Hub: {driver.city}</div>
+                  <tr key={driver.id} className="hover:bg-gray-50/50 transition-colors group">
+                    <td className="px-8 py-6 sticky left-0 bg-white group-hover:bg-gray-50/50 transition-colors">
+                      <div className="font-black text-gray-800 whitespace-nowrap uppercase tracking-tight leading-tight">{driver.name}</div>
+                      <div className={`text-[8px] uppercase font-bold tracking-widest mt-1 ${monthlyBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {monthlyBalance >= 0 ? 'Account Health: Positive' : 'Account Health: Arrears'}
+                      </div>
                     </td>
-                    <td className="px-6 py-8 text-center">
-                      <span className="text-[11px] font-black text-gray-400 dark:text-white/20">R{driverTarget.toLocaleString()}</span>
+                    
+                    {weeklyPaidSums.map((amount, i) => {
+                      const isEditing = editingCell?.driverId === driver.id && editingCell?.weekIndex === i;
+                      const isFullyPaid = amount >= currentTarget;
+                      return (
+                        <td key={i} className="px-4 py-6 text-center">
+                          {isEditing ? (
+                            <input ref={editInputRef} type="number" className="w-20 px-2 py-1.5 rounded-lg border-2 border-blue-500 text-center font-black text-[10px] outline-none" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={e => e.key === 'Enter' && saveEdit()} />
+                          ) : (
+                            <button 
+                              onClick={() => handleCellClick(driver.id, i, amount)}
+                              className={`inline-block px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter min-w-[70px] transition-all ${isFullyPaid ? 'bg-green-100 text-green-700 hover:bg-green-200' : amount > 0 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-300 hover:bg-blue-600 hover:text-white'}`}
+                            >
+                              {amount > 0 ? `R${amount}` : '+ Pay'}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    <td className="px-8 py-6 text-[11px] font-black text-gray-800 text-right">R{monthlyTotal.toLocaleString()}</td>
+                    <td className={`px-8 py-6 text-[11px] font-black text-right ${monthlyBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {monthlyBalance >= 0 ? `+R${monthlyBalance}` : `R${monthlyBalance}`}
                     </td>
-                    <td className="px-6 py-8 text-center">
-                      <span className="text-sm font-black text-gray-900 dark:text-white">R{driverPaid.toLocaleString()}</span>
-                    </td>
-                    <td className="px-6 py-8 text-center">
-                      <span className={`text-sm font-black ${remaining > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                        {remaining > 0 ? `R${remaining.toLocaleString()}` : 'SETTLED'}
-                      </span>
-                    </td>
-                    <td className="px-10 py-8 text-right">
-                      <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                        isSettled 
-                        ? 'bg-green-50 dark:bg-green-400/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-400/20' 
-                        : 'bg-red-50 dark:bg-red-400/10 text-red-500 dark:text-red-400 border-red-100 dark:border-red-400/20'
-                      }`}>
-                        {isSettled ? 'Verified' : 'Pending'}
-                      </span>
+                    <td className="px-8 py-6 text-center bg-gray-50/30">
+                      <div className="flex flex-col items-center">
+                        {isEditingTarget ? (
+                           <input ref={targetInputRef} type="number" className="w-20 px-2 py-1.5 rounded-lg border-2 border-indigo-500 text-center font-black text-[10px] outline-none" value={targetEditValue} onChange={e => setTargetEditValue(e.target.value)} onBlur={saveTargetEdit} onKeyDown={e => e.key === 'Enter' && saveTargetEdit()} />
+                        ) : (
+                          <div 
+                            onClick={() => handleTargetClick(driver)}
+                            className="group/target cursor-pointer"
+                          >
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all group-hover/target:bg-indigo-50 ${driver.weeklyTarget ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              R{currentTarget}
+                            </span>
+                            <div className="opacity-0 group-hover/target:opacity-100 transition-opacity text-[6px] font-black text-indigo-400 uppercase mt-0.5">Click to edit</div>
+                          </div>
+                        )}
+                        {driver.weeklyTarget && !isEditingTarget && <span className="text-[7px] font-black text-indigo-400 uppercase tracking-tighter mt-1">Driver Specific</span>}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -173,26 +382,39 @@ const PaymentTracking: React.FC<PaymentTrackingProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
-      
-      {showForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[150] flex items-center justify-center p-4">
-           <form className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl rounded-[4rem] w-full max-w-xl p-12 space-y-10 animate-in zoom-in duration-300">
-              <div className="flex justify-between items-center border-b border-gray-100 dark:border-white/10 pb-8 mb-8">
-                 <div>
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">Post Collection</h3>
-                    <p className="text-[10px] text-gray-400 dark:text-white/30 font-black uppercase tracking-[0.3em] mt-3">Fiscal Data Authorization</p>
+      ) : (
+        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden animate-in fade-in duration-500">
+           <div className="grid grid-cols-7 border-b border-gray-100">
+             {daysOfWeek.map(d => <div key={d} className="px-4 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{d}</div>)}
+           </div>
+           <div className="grid grid-cols-7 grid-rows-6 h-[700px]">
+             {calendarDays.map((dayObj, idx) => {
+               const dayPayments = dayObj.currentMonth ? filteredPayments.filter(p => new Date(p.date).getDate() === dayObj.day) : [];
+               return (
+                 <div key={idx} onClick={() => handleCalendarDayClick(dayObj.day, dayObj.currentMonth)} className={`border-r border-b border-gray-50 p-2 flex flex-col space-y-1 overflow-hidden transition-colors ${!dayObj.currentMonth ? 'bg-gray-50/50' : 'hover:bg-blue-50/20 cursor-pointer'} ${idx % 7 === 6 ? 'border-r-0' : ''}`}>
+                   <div className="flex justify-between items-start">
+                     <span className={`text-[11px] font-black ${dayObj.currentMonth ? 'text-gray-800' : 'text-gray-300'}`}>{dayObj.day}</span>
+                   </div>
+                   <div className="flex-1 overflow-y-auto no-scrollbar space-y-1">
+                     {dayPayments.map(p => {
+                       const driver = drivers.find(d => d.id === p.driverId);
+                       return (
+                         <div key={p.id} className="bg-white border border-gray-100 rounded-lg p-1.5 shadow-sm flex items-center space-x-2">
+                           <div className="w-5 h-5 rounded-md bg-blue-100 flex items-center justify-center text-[8px] font-black text-blue-600 shrink-0 overflow-hidden">
+                              {driver?.profilePictureUrl ? <img src={driver.profilePictureUrl} className="w-full h-full object-cover" /> : driver?.name.substring(0, 1)}
+                           </div>
+                           <div className="min-w-0 flex-1">
+                             <p className="text-[7px] font-black text-gray-800 uppercase truncate leading-tight">{driver?.name.split(' ')[0]}</p>
+                             <p className="text-[8px] font-black text-blue-500 leading-tight">R{p.amount}</p>
+                           </div>
+                         </div>
+                       );
+                     })}
+                   </div>
                  </div>
-                 <button type="button" onClick={() => setShowForm(false)} className="text-gray-300 hover:text-gray-900 dark:hover:text-white text-6xl leading-none transition-colors">&times;</button>
-              </div>
-              <div className="space-y-6">
-                 <select className="w-full bg-gray-50 dark:bg-black/50 border-none rounded-[1.5rem] p-6 text-sm font-bold outline-none shadow-inner dark:text-white">
-                   {activeDrivers.map(d => <option key={d.id}>{d.name}</option>)}
-                 </select>
-                 <input type="number" placeholder="SETTLEMENT AMOUNT (R)" className="w-full bg-gray-50 dark:bg-black/50 border-none rounded-[1.5rem] p-6 text-sm font-bold outline-none shadow-inner dark:text-white" />
-              </div>
-              <button className="w-full bg-gray-900 dark:bg-blue-600 text-white py-6 rounded-[2.5rem] font-black uppercase text-[11px] tracking-[0.4em] shadow-2xl hover:bg-black transition-all">Authorize Transaction</button>
-           </form>
+               );
+             })}
+           </div>
         </div>
       )}
     </div>
