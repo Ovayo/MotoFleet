@@ -76,6 +76,18 @@ export interface TrafficFine {
   attachmentUrl?: string;
 }
 
+export interface AccidentReport {
+  id: string;
+  bikeId: string;
+  driverId: string;
+  date: string;
+  location: string;
+  description: string;
+  status: 'reported' | 'insurance-pending' | 'resolved';
+  thirdPartyDetails?: string;
+  attachmentUrl?: string;
+}
+
 export interface Workshop {
   id: string;
   name: string;
@@ -101,4 +113,4 @@ export interface FleetContext {
   isCloudSyncing: boolean;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'tracking';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'tracking' | 'incidents';

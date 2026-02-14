@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_BIKES, INITIAL_DRIVERS, INITIAL_PAYMENTS, INITIAL_WORKSHOPS } from './data';
-import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop, AutomatedNotification } from './types';
+import { Bike, Driver, Payment, MaintenanceRecord, View, TrafficFine, Workshop, AutomatedNotification, AccidentReport } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import FleetManagement from './components/FleetManagement';
@@ -16,6 +16,7 @@ import TrafficFines from './components/TrafficFines';
 import LoadingScreen from './components/LoadingScreen';
 import NotificationCenter from './components/NotificationCenter';
 import TrackingPortal from './components/TrackingPortal';
+import AccidentLog from './components/AccidentLog';
 import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
@@ -58,6 +59,7 @@ const App: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
   const [fines, setFines] = useState<TrafficFine[]>([]);
+  const [accidents, setAccidents] = useState<AccidentReport[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
 
@@ -74,12 +76,13 @@ const App: React.FC = () => {
       setIsCloudSyncing(true);
 
       try {
-        const [cBikes, cDrivers, cPayments, cMaint, cFines, cWorkshops, cNotifs] = await Promise.all([
+        const [cBikes, cDrivers, cPayments, cMaint, cFines, cAccidents, cWorkshops, cNotifs] = await Promise.all([
           cloud.fetch<Bike[]>('bikes', INITIAL_BIKES),
           cloud.fetch<Driver[]>('drivers', INITIAL_DRIVERS),
           cloud.fetch<Payment[]>('payments', INITIAL_PAYMENTS),
           cloud.fetch<MaintenanceRecord[]>('maintenance', []),
           cloud.fetch<TrafficFine[]>('fines', []),
+          cloud.fetch<AccidentReport[]>('accidents', []),
           cloud.fetch<Workshop[]>('workshops', INITIAL_WORKSHOPS),
           cloud.fetch<AutomatedNotification[]>('notifications', [])
         ]);
@@ -90,6 +93,7 @@ const App: React.FC = () => {
           setPayments(cPayments || []);
           setMaintenance(cMaint || []);
           setFines(cFines || []);
+          setAccidents(cAccidents || []);
           setWorkshops(cWorkshops || []);
           setNotifications(cNotifs || []);
           
@@ -112,10 +116,19 @@ const App: React.FC = () => {
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('payments', payments); }, [payments, isHydrated, fleetId]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('maintenance', maintenance); }, [maintenance, isHydrated, fleetId]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('fines', fines); }, [fines, isHydrated, fleetId]);
+  useEffect(() => { if (isHydrated && fleetId) cloud.persist('accidents', accidents); }, [accidents, isHydrated, fleetId]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('workshops', workshops); }, [workshops, isHydrated, fleetId]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('notifications', notifications); }, [notifications, isHydrated, fleetId]);
 
   const WEEKLY_TARGET = 650;
+
+  const handleAddAccident = (report: Omit<AccidentReport, 'id'>) => {
+    setAccidents(prev => [...prev, { ...report, id: `acc-${Date.now()}` }]);
+  };
+
+  const handleUpdateAccidentStatus = (id: string, status: AccidentReport['status']) => {
+    setAccidents(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  };
 
   const triggerAutomations = async () => {
     setIsCloudSyncing(true);
@@ -258,7 +271,9 @@ const App: React.FC = () => {
             onUpdateDriver={handleUpdateDriver}
             payments={payments} 
             fines={fines}
+            accidents={accidents}
             onAddFine={handleAddFine}
+            onAddAccident={handleAddAccident}
             bike={bikes.find(b => b.assignedDriverId === activeDriver.id)} 
             maintenance={maintenance}
             onAddMaintenance={handleAddMaintenance}
@@ -277,33 +292,15 @@ const App: React.FC = () => {
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
       case 'drivers':
-        return (
-          <DriverManagement 
-            drivers={drivers} 
-            setDrivers={setDrivers} 
-            bikes={bikes} 
-            payments={payments} 
-            fines={fines}
-            onAddFine={handleAddFine}
-            weeklyTarget={WEEKLY_TARGET} 
-          />
-        );
+        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} />;
       case 'payments':
-        return (
-          <PaymentTracking 
-            drivers={drivers} 
-            payments={payments} 
-            onAddPayment={handleAddPayment} 
-            onUpdatePayment={handleUpdatePayment}
-            onDeletePayment={handleDeletePayment}
-            onUpdateDriver={handleUpdateDriver}
-            weeklyTarget={WEEKLY_TARGET} 
-          />
-        );
+        return <PaymentTracking drivers={drivers} payments={payments} onAddPayment={handleAddPayment} onUpdatePayment={handleUpdatePayment} onDeletePayment={handleDeletePayment} onUpdateDriver={handleUpdateDriver} weeklyTarget={WEEKLY_TARGET} />;
       case 'maintenance':
         return <MaintenanceLog bikes={bikes} maintenance={maintenance} onAddMaintenance={handleAddMaintenance} onUpdateMaintenance={handleUpdateMaintenance} onDeleteMaintenance={handleDeleteMaintenance} workshops={workshops} />;
       case 'fines':
         return <TrafficFines bikes={bikes} drivers={drivers} fines={fines} onAddFine={handleAddFine} onUpdateStatus={handleUpdateFineStatus} />;
+      case 'incidents':
+        return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onUpdateStatus={handleUpdateAccidentStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
       case 'tracking':
@@ -315,9 +312,7 @@ const App: React.FC = () => {
 
   const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && (loggedDriver || isAdminAuthenticated));
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
@@ -337,10 +332,6 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* 
-          pb-24 on mobile adds padding to account for the new bottom navigation bar
-          pt-6 is reduced on mobile as the top header is simpler
-      */}
       <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8' : ''}`}>
         {showSidebar && (
           <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
@@ -354,24 +345,13 @@ const App: React.FC = () => {
                     <span className="hidden sm:inline-block text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
                       {fleetName}
                     </span>
-                    {isCloudSyncing && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                    )}
                   </div>
                 )}
               </div>
-              <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest truncate">
-                {role === 'admin' ? "Asset & Logistics Monitoring" : role === 'mechanic' ? "Technical Hub" : (loggedDriver?.name || 'Admin Simulation')}
-              </p>
             </div>
             
             <div className="flex items-center space-x-2 md:space-x-4">
-              <button 
-                onClick={handleLogout} 
-                className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors"
-              >
-                Sign Out
-              </button>
+              <button onClick={handleLogout} className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">Sign Out</button>
               <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
                 isAdminAuthenticated ? 'bg-blue-600 shadow-blue-100' : 
                 role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
