@@ -33,12 +33,23 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
     return filter === 'all' ? accidents : accidents.filter(a => a.status === filter);
   }, [accidents, filter]);
 
+  // Intelligent Association: Bike -> Driver
   const handleBikeChange = (bikeId: string) => {
     const bike = bikes.find(b => b.id === bikeId);
     setAccidentFormData(prev => ({
       ...prev,
       bikeId,
       driverId: bike?.assignedDriverId || prev.driverId
+    }));
+  };
+
+  // Intelligent Association: Driver -> Bike
+  const handleDriverChange = (driverId: string) => {
+    const bike = bikes.find(b => b.assignedDriverId === driverId);
+    setAccidentFormData(prev => ({
+      ...prev,
+      driverId,
+      bikeId: bike?.id || prev.bikeId
     }));
   };
 
@@ -239,7 +250,7 @@ const AccidentLog: React.FC<AccidentLogProps> = ({ accidents, bikes, drivers, on
                       required 
                       className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 font-bold" 
                       value={accidentFormData.driverId} 
-                      onChange={e => setAccidentFormData({...accidentFormData, driverId: e.target.value})}
+                      onChange={e => handleDriverChange(e.target.value)}
                     >
                        <option value="">Select Operator...</option>
                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}

@@ -10,9 +10,10 @@ interface DriverManagementProps {
   fines: TrafficFine[];
   onAddFine: (fine: Omit<TrafficFine, 'id'>) => void;
   weeklyTarget: number;
+  onAdminViewHub: (driver: Driver) => void;
 }
 
-const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, fines, onAddFine, weeklyTarget }) => {
+const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, fines, onAddFine, weeklyTarget, onAdminViewHub }) => {
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
@@ -165,11 +166,10 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     });
   };
 
-  // Centralized helper to format phone numbers for wa.me links
   const formatForWhatsApp = (phone: string) => {
-    let cleaned = phone.replace(/\D/g, ''); // Remove non-numeric characters
+    let cleaned = phone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
-      cleaned = '27' + cleaned.substring(1); // Standard SA international prefix
+      cleaned = '27' + cleaned.substring(1);
     }
     return cleaned;
   };
@@ -215,7 +215,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
     return drivers.filter(d => !!d.isArchived === showArchived);
   }, [drivers, showArchived]);
 
-  // Updated Form as a Lightbox Modal
   const DriverModal = () => (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in duration-300">
@@ -367,7 +366,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {displayDrivers.map(driver => {
-          const assignedBike = bikes.find(b => b.id === driver.id);
+          const assignedBike = bikes.find(b => b.assignedDriverId === driver.id);
           const payStatus = getPaymentStatus(driver);
           const balance = getFullBalance(driver);
           const unpaidFineTotal = getUnpaidFines(driver.id);
@@ -417,16 +416,25 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 
                 <div className="flex items-center space-x-2">
                   {!driver.isArchived && (
-                    <button 
-                      onClick={() => {
-                        setShowFineForm(driver.id);
-                        setFineFormData(prev => ({ ...prev, driverId: driver.id, bikeId: assignedBike?.id || '' }));
-                      }}
-                      className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
-                      title="Attach Infringement"
-                    >
-                      🚔
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => onAdminViewHub(driver)}
+                        className="w-11 h-11 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                        title="Enter Operator Hub"
+                      >
+                        👤
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setShowFineForm(driver.id);
+                          setFineFormData(prev => ({ ...prev, driverId: driver.id, bikeId: assignedBike?.id || '' }));
+                        }}
+                        className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                        title="Attach Infringement"
+                      >
+                        🚔
+                      </button>
+                    </>
                   )}
                   <button 
                     onClick={() => { 
@@ -518,17 +526,25 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
               </div>
 
               {!driver.isArchived && (
-                <button 
-                  onClick={() => sendReminder(driver)}
-                  className={`w-full text-white text-[11px] font-black uppercase tracking-[0.25em] py-6 rounded-[1.8rem] transition-all shadow-2xl flex items-center justify-center group/btn active:scale-95 ${
-                    payStatus === 'overdue' || unpaidFineTotal > 0 ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 
-                    payStatus === 'partial' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200' :
-                    'bg-gray-900 hover:bg-black shadow-gray-300'
-                  }`}
-                >
-                  <span className="mr-4 text-xl transition-transform group-hover/btn:scale-125">💬</span> 
-                  {payStatus === 'fully-paid' && unpaidFineTotal === 0 ? 'Send Status Heartbeat' : 'Dispatch Arrears Alert'}
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => onAdminViewHub(driver)}
+                    className="w-full bg-green-600 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl shadow-lg shadow-green-100 hover:bg-green-700 transition-all flex items-center justify-center active:scale-95"
+                  >
+                    <span className="mr-3 text-lg">⚡</span> Enter Operator Hub
+                  </button>
+                  <button 
+                    onClick={() => sendReminder(driver)}
+                    className={`w-full text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all shadow-xl flex items-center justify-center group/btn active:scale-95 ${
+                      payStatus === 'overdue' || unpaidFineTotal > 0 ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 
+                      payStatus === 'partial' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200' :
+                      'bg-gray-900 hover:bg-black shadow-gray-300'
+                    }`}
+                  >
+                    <span className="mr-3 text-lg transition-transform group-hover/btn:scale-125">💬</span> 
+                    {payStatus === 'fully-paid' && unpaidFineTotal === 0 ? 'Send Status Heartbeat' : 'Dispatch Arrears Alert'}
+                  </button>
+                </div>
               )}
             </div>
           );

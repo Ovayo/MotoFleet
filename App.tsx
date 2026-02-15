@@ -38,6 +38,7 @@ const App: React.FC = () => {
   
   const [isHydrated, setIsHydrated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
   const cloud = useMemo(() => new MotoFleetCloud(fleetId || 'default'), [fleetId]);
@@ -122,6 +123,16 @@ const App: React.FC = () => {
 
   const WEEKLY_TARGET = 650;
 
+  // Optimized view switcher with transition
+  const handleSetView = (newView: View) => {
+    if (view === newView) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setView(newView);
+      setIsTransitioning(false);
+    }, 450);
+  };
+
   const handleAddAccident = (report: Omit<AccidentReport, 'id'>) => {
     setAccidents(prev => [...prev, { ...report, id: `acc-${Date.now()}` }]);
   };
@@ -202,13 +213,27 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAdminViewDriverHub = (driver: Driver) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setLoggedDriver(driver);
+      setRole('driver');
+      setView('driver-profile');
+      setIsTransitioning(false);
+    }, 450);
+  };
+
   const handleDriverLogin = (contact: string) => {
     const normalizedInput = contact.replace(/\s/g, '');
     const driver = drivers.find(d => d.contact.replace(/\s/g, '') === normalizedInput);
     if (driver) {
-      setLoggedDriver(driver);
-      setRole('driver');
-      setView('driver-profile');
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setLoggedDriver(driver);
+        setRole('driver');
+        setView('driver-profile');
+        setIsTransitioning(false);
+      }, 600);
       return true;
     }
     return false;
@@ -216,34 +241,42 @@ const App: React.FC = () => {
 
   const handleAdminLogin = (passcode: string, fId: string, fName?: string) => {
     if (passcode === 'admin123') {
-      const finalName = fName || `Fleet ${fId.toUpperCase()}`;
-      setFleetId(fId);
-      setFleetName(finalName);
-      localStorage.setItem('active_fleet_id', fId);
-      localStorage.setItem('active_fleet_name', finalName);
-      localStorage.setItem('motofleet_admin_auth_v1', 'true');
-      setIsAdminAuthenticated(true);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        const finalName = fName || `Fleet ${fId.toUpperCase()}`;
+        setFleetId(fId);
+        setFleetName(finalName);
+        localStorage.setItem('active_fleet_id', fId);
+        localStorage.setItem('active_fleet_name', finalName);
+        localStorage.setItem('motofleet_admin_auth_v1', 'true');
+        setIsAdminAuthenticated(true);
+        setIsTransitioning(false);
+      }, 800);
       return true;
     }
     return false;
   };
 
   const handleLogout = () => {
-    setLoggedDriver(null);
-    setIsAdminAuthenticated(false);
-    localStorage.removeItem('motofleet_admin_auth_v1');
-    localStorage.removeItem('active_fleet_id');
-    localStorage.removeItem('active_fleet_name');
-    setFleetId(null);
-    setIsHydrated(false);
-    if (isDedicatedDriverMode) {
-      setRole('driver');
-    } else if (isDedicatedMechanicMode) {
-      setRole('mechanic');
-    } else {
-      setRole('admin');
-      setView('dashboard');
-    }
+    setLoading(true);
+    setTimeout(() => {
+      setLoggedDriver(null);
+      setIsAdminAuthenticated(false);
+      localStorage.removeItem('motofleet_admin_auth_v1');
+      localStorage.removeItem('active_fleet_id');
+      localStorage.removeItem('active_fleet_name');
+      setFleetId(null);
+      setIsHydrated(false);
+      if (isDedicatedDriverMode) {
+        setRole('driver');
+      } else if (isDedicatedMechanicMode) {
+        setRole('mechanic');
+      } else {
+        setRole('admin');
+        setView('dashboard');
+      }
+      setLoading(false);
+    }, 1200);
   };
 
   const renderView = () => {
@@ -267,7 +300,7 @@ const App: React.FC = () => {
     }
 
     if (role === 'driver') {
-      const activeDriver = loggedDriver || (isAdminAuthenticated && (drivers?.length || 0) > 0 ? drivers[0] : null);
+      const activeDriver = loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
       if (activeDriver) {
         return (
           <DriverProfile 
@@ -287,7 +320,9 @@ const App: React.FC = () => {
           />
         );
       }
-      return <DriverLogin onLogin={handleDriverLogin} />;
+      // Only show login if NOT admin (or if admin role is selected but no drivers exist)
+      if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} />;
+      return <div className="p-20 text-center font-black text-gray-300 uppercase tracking-widest">No Active Operators Enrolled</div>;
     }
 
     switch (view) {
@@ -296,7 +331,7 @@ const App: React.FC = () => {
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
       case 'drivers':
-        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} />;
+        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} onAdminViewHub={handleAdminViewDriverHub} />;
       case 'payments':
         return <PaymentTracking drivers={drivers} payments={payments} onAddPayment={handleAddPayment} onUpdatePayment={handleUpdatePayment} onDeletePayment={handleDeletePayment} onUpdateDriver={handleUpdateDriver} weeklyTarget={WEEKLY_TARGET} />;
       case 'maintenance':
@@ -320,18 +355,24 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+      {isTransitioning && <LoadingScreen isFast />}
+      
       {showSidebar && (
         <Sidebar 
           activeView={view} 
-          setView={setView} 
+          setView={handleSetView} 
           role={role} 
           isAdminAuthenticated={isAdminAuthenticated}
           hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
           onSwitchMode={(newRole) => {
-            setRole(newRole);
-            if (newRole === 'admin') setView('dashboard');
-            if (newRole === 'mechanic') setView('mechanic-portal');
-            if (newRole === 'driver') setView('driver-profile');
+            setIsTransitioning(true);
+            setTimeout(() => {
+              setRole(newRole);
+              if (newRole === 'admin') setView('dashboard');
+              if (newRole === 'mechanic') setView('mechanic-portal');
+              if (newRole === 'driver') setView('driver-profile');
+              setIsTransitioning(false);
+            }, 500);
           }}
         />
       )}
@@ -361,10 +402,14 @@ const App: React.FC = () => {
                 role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
                 'bg-green-600 shadow-green-100'
               }`}>
-                {role === 'driver' && loggedDriver?.profilePictureUrl ? (
-                  <img src={loggedDriver.profilePictureUrl} className="w-full h-full object-cover" />
+                {role === 'driver' && (loggedDriver || (isAdminAuthenticated && drivers.length > 0)) ? (
+                  (loggedDriver || drivers[0])?.profilePictureUrl ? (
+                    <img src={(loggedDriver || drivers[0])?.profilePictureUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    (loggedDriver || drivers[0])?.name.substring(0, 2).toUpperCase()
+                  )
                 ) : (
-                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : (loggedDriver?.name.substring(0, 2).toUpperCase() || 'AS')
+                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : 'AS'
                 )}
               </div>
             </div>

@@ -65,6 +65,9 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     if (s.includes('oil') || s.includes('lube')) return '🛢️';
     if (s.includes('body') || s.includes('paint')) return '🎨';
     if (s.includes('general')) return '🛠️';
+    if (s.includes('honda')) return '🇯🇵';
+    if (s.includes('hero')) return '🇮🇳';
+    if (s.includes('big boy')) return '🏁';
     return '🔧';
   };
 
@@ -161,7 +164,6 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
     });
   };
 
-  // Fixed handleWorkshopSubmit to correctly type the form event for elements access
   const handleWorkshopSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -271,7 +273,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-left-4">
               <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
                 <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Active Workshop Queue</h3>
-                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase">Fleet Grounded</span>
+                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase">Technical Grid</span>
               </div>
               <div className="divide-y divide-gray-50">
                 {workshopBikes.length === 0 ? (
@@ -282,9 +284,9 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                   workshopBikes.map(bike => {
                     const workshop = workshops.find(w => w.id === bike.assignedWorkshopId);
                     return (
-                      <div key={bike.id} className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-gray-50/50 transition-colors">
+                      <div key={bike.id} className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-gray-50/50 transition-all group/row">
                         <div className="flex items-center space-x-6 min-w-0">
-                          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-inner border border-amber-100">🏍️</div>
+                          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-inner border border-amber-100 transition-transform group-hover/row:scale-110">🏍️</div>
                           <div className="min-w-0">
                             <h4 className="font-black text-gray-900 text-lg uppercase leading-none truncate">{bike.licenseNumber}</h4>
                             <p className="text-[10px] text-gray-400 font-bold uppercase mt-1.5">{bike.makeModel}</p>
@@ -292,38 +294,37 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                         </div>
 
                         {workshop ? (
-                          <div className="flex-1 flex flex-col md:flex-row items-center md:justify-end gap-6">
+                          <div className="flex-1 flex flex-col md:flex-row items-center md:justify-end gap-6 animate-in fade-in slide-in-from-right-4">
                             <div className="text-center md:text-right border-l-0 md:border-l border-gray-100 md:pl-6">
                               <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1 flex items-center justify-center md:justify-end">
                                 <span className="mr-1">🏪</span> Assigned Partner
                               </p>
-                              <h5 className="text-sm font-black text-gray-800 uppercase truncate">{workshop.name}</h5>
-                              <div className="flex items-center justify-center md:justify-end space-x-2 mt-1">
+                              <h5 className="text-sm font-black text-gray-800 uppercase truncate leading-tight mb-1">{workshop.name}</h5>
+                              <div className="flex flex-col items-center md:items-end">
                                 <span className="text-[10px] text-gray-400 font-bold uppercase truncate">{workshop.contact}</span>
-                                <span className="text-gray-300">|</span>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase truncate">{workshop.location}</span>
+                                <span className="text-[9px] text-gray-300 font-black uppercase mt-0.5 truncate">{workshop.location}</span>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
                               <button 
                                 onClick={() => window.open(`tel:${workshop.contact}`)}
-                                className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90"
                                 title="Call Workshop"
                               >
                                 📞
                               </button>
                               <button 
                                 onClick={() => window.open(`https://wa.me/${formatForWhatsApp(workshop.contact)}`, '_blank')}
-                                className="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                                className="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm active:scale-90"
                                 title="WhatsApp Workshop"
                               >
                                 💬
                               </button>
                               <button 
                                 onClick={() => setAssigningWorkshopBikeId(bike.id)}
-                                className="text-[8px] font-black text-gray-400 uppercase hover:text-amber-600 transition-colors px-3 py-2 bg-gray-50 rounded-lg"
+                                className="text-[8px] font-black text-gray-400 uppercase hover:text-amber-600 transition-colors px-3 py-2 bg-gray-50 rounded-lg hover:bg-white border border-transparent hover:border-amber-100"
                               >
-                                Transfer
+                                Re-Assign
                               </button>
                             </div>
                           </div>
@@ -331,9 +332,9 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                           <div className="flex-1 flex justify-center md:justify-end">
                             <button 
                               onClick={() => setAssigningWorkshopBikeId(bike.id)}
-                              className="bg-amber-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 active:scale-95 transition-all flex items-center space-x-2"
+                              className="bg-amber-600 text-white px-8 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-700 active:scale-95 transition-all flex items-center space-x-2"
                             >
-                              <span>🚀</span>
+                              <span>🚚</span>
                               <span>Dispatch to Partner</span>
                             </button>
                           </div>
@@ -424,7 +425,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                        <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
                        <input 
                         type="text" 
-                        placeholder="Filter partners by name or specialty..."
+                        placeholder="Search partners by name or specialty..."
                         className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-amber-500/10 text-xs font-bold"
                         value={workshopSearch}
                         onChange={(e) => setWorkshopSearch(e.target.value)}
@@ -446,12 +447,12 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
                        >
-                         <option value="rating">Top Rated</option>
-                         <option value="name">Alphabetical</option>
+                         <option value="rating">Sort: Top Rated</option>
+                         <option value="name">Sort: A-Z Name</option>
                        </select>
                        <button 
                         onClick={() => setShowWorkshopForm(true)}
-                        className="bg-amber-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-100"
+                        className="bg-amber-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95"
                        >
                          + New Partner
                        </button>
@@ -465,10 +466,10 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                     const otherSpecs = workshop.specialization && workshop.specialization.length > 1 ? workshop.specialization.slice(1) : [];
                     
                     return (
-                      <div key={workshop.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden">
+                      <div key={workshop.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden flex flex-col">
                          <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center space-x-4">
-                               <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-500 relative">
+                               <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl group-hover:bg-amber-500 group-hover:text-white transition-all duration-500 relative">
                                  🏪
                                  {primarySpec && <span className="absolute -right-1 -bottom-1 bg-white text-[10px] w-6 h-6 rounded-lg flex items-center justify-center shadow-sm text-gray-800 border border-gray-100">{getSpecIcon(primarySpec)}</span>}
                                </div>
@@ -485,14 +486,14 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                                </div>
                             </div>
                             <div className="flex items-center space-x-1">
-                               <button onClick={() => openEditWorkshop(workshop)} className="p-2 text-gray-300 hover:text-blue-500 transition-colors">✏️</button>
-                               <button onClick={() => onDeleteWorkshop(workshop.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">🗑️</button>
+                               <button onClick={() => openEditWorkshop(workshop)} className="p-2 text-gray-300 hover:text-blue-500 transition-colors" title="Edit Partner">✏️</button>
+                               <button onClick={() => onDeleteWorkshop(workshop.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors" title="Delete Partner">🗑️</button>
                             </div>
                          </div>
 
                          {primarySpec && (
                            <div className="mb-4 bg-amber-600/5 p-4 rounded-2xl border border-amber-600/10">
-                              <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest mb-1">Primary Specialization</p>
+                              <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest mb-1">Main Focus</p>
                               <div className="flex items-center space-x-2">
                                  <span className="text-xl">{getSpecIcon(primarySpec)}</span>
                                  <span className="text-sm font-black text-gray-800 uppercase tracking-tight">{primarySpec}</span>
@@ -500,7 +501,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                            </div>
                          )}
 
-                         <div className="space-y-4 mb-6">
+                         <div className="space-y-4 mb-6 flex-grow">
                             <div className="p-3 bg-gray-50 rounded-xl flex items-center space-x-3">
                                <span className="text-gray-400">📍</span>
                                <span className="text-[11px] font-bold text-gray-600 uppercase truncate">{workshop.location}</span>
@@ -508,7 +509,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                             {otherSpecs.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                  {otherSpecs.map((spec, i) => (
-                                   <span key={i} className="px-2.5 py-1 bg-white text-gray-400 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1.5">
+                                   <span key={i} className="px-2.5 py-1 bg-white text-gray-400 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1.5 transition-colors hover:bg-gray-50 hover:text-gray-600">
                                      <span>{getSpecIcon(spec)}</span>
                                      <span>{spec}</span>
                                    </span>
@@ -520,13 +521,13 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
                          <div className="flex gap-2">
                             <button 
                               onClick={() => window.open(`tel:${workshop.contact}`)}
-                              className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg"
+                              className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95"
                             >
-                              Call
+                              Call Office
                             </button>
                             <button 
                               onClick={() => window.open(`https://wa.me/${formatForWhatsApp(workshop.contact)}`, '_blank')}
-                              className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg"
+                              className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg active:scale-95"
                             >
                               WhatsApp
                             </button>
@@ -565,7 +566,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
 
            <div className="bg-gray-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
               <div className="relative z-10">
-                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Top Rated Partners</h4>
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Partner Ranking</h4>
                 <div className="space-y-4">
                    {workshops.sort((a,b) => b.rating - a.rating).slice(0, 3).map(w => (
                      <div key={w.id} className="flex items-center justify-between group/ws">
