@@ -17,6 +17,8 @@ import LoadingScreen from './components/LoadingScreen';
 import NotificationCenter from './components/NotificationCenter';
 import TrackingPortal from './components/TrackingPortal';
 import AccidentLog from './components/AccidentLog';
+import DataManagement from './components/DataManagement';
+import FleetOracle from './components/FleetOracle';
 import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
@@ -123,7 +125,6 @@ const App: React.FC = () => {
 
   const WEEKLY_TARGET = 650;
 
-  // Optimized view switcher with transition
   const handleSetView = (newView: View) => {
     if (view === newView) return;
     setIsTransitioning(true);
@@ -331,7 +332,6 @@ const App: React.FC = () => {
           />
         );
       }
-      // Only show login if NOT admin (or if admin role is selected but no drivers exist)
       if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} onSwitchRole={switchPortalRole} />;
       return <div className="p-20 text-center font-black text-gray-300 uppercase tracking-widest">No Active Operators Enrolled</div>;
     }
@@ -355,6 +355,15 @@ const App: React.FC = () => {
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
       case 'tracking':
         return <TrackingPortal bikes={bikes} />;
+      case 'system':
+        return (
+          <DataManagement 
+            fleetId={fleetId || 'default'} 
+            fleetName={fleetName} 
+            data={{ bikes, drivers, payments, maintenance, fines, accidents, workshops, notifications }}
+            setters={{ setBikes, setDrivers, setPayments, setMaintenance, setFines, setAccidents, setWorkshops, setNotifications }}
+          />
+        );
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }
@@ -422,6 +431,10 @@ const App: React.FC = () => {
           {renderView()}
         </div>
       </main>
+
+      {isAdminAuthenticated && (
+        <FleetOracle data={{ bikes, drivers, payments, maintenance, fines, accidents }} />
+      )}
     </div>
   );
 };
