@@ -160,7 +160,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   };
 
   return (
-    <div className="w-full space-y-6 pb-24 md:pb-8 max-w-5xl mx-auto">
+    <div className="w-full space-y-6 pb-24 md:pb-8">
       {isAdminViewing && (
         <div className="bg-blue-600 text-white p-4 rounded-2xl mb-6 flex items-center justify-between shadow-xl animate-in slide-in-from-top-4">
            <div className="flex items-center space-x-3">
