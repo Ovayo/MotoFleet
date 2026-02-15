@@ -394,16 +394,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                                     getDiskExpiryStatus() === 'valid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                 }`}>{getDiskExpiryStatus()}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">📍</div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-gray-800 uppercase">Live Tracker</p>
-                                        <p className="text-[9px] font-bold text-gray-400">Signal: {bike?.tracker?.signalStrength || 'Secure'}</p>
-                                    </div>
-                                </div>
-                                <span className="text-[8px] font-black text-blue-400 uppercase">ONLINE</span>
-                            </div>
                         </div>
                         <div className="mt-10">
                             <button onClick={() => setShowLogForm(true)} className="w-full bg-amber-500 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-600 transition-all">

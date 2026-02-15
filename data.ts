@@ -14,8 +14,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd1', 
     licenseDiskExpiry: '2025-06-15', 
-    enatisVerified: true,
-    tracker: { status: 'moving', lat: -26.1, lng: 28.0, battery: 85, signalStrength: 'Strong', speed: 45 }
+    enatisVerified: true
   },
   { 
     id: 'b2', 
@@ -29,8 +28,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd2', 
     licenseDiskExpiry: '2026-01-20', 
-    enatisVerified: true,
-    tracker: { status: 'parked', lat: -26.15, lng: 28.05, battery: 15, signalStrength: 'Medium', speed: 0 }
+    enatisVerified: true
   },
   { 
     id: 'b3', 
@@ -44,8 +42,7 @@ export const INITIAL_BIKES: Bike[] = [
     status: 'active', 
     assignedDriverId: 'd3', 
     licenseDiskExpiry: '2024-12-10', 
-    enatisVerified: true,
-    tracker: { status: 'ignited', lat: -33.9, lng: 18.4, battery: 92, signalStrength: 'Strong', speed: 0 }
+    enatisVerified: true
   },
   { 
     id: 'b4', 

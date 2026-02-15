@@ -15,7 +15,6 @@ import MechanicPortal from './components/MechanicPortal';
 import TrafficFines from './components/TrafficFines';
 import LoadingScreen from './components/LoadingScreen';
 import NotificationCenter from './components/NotificationCenter';
-import TrackingPortal from './components/TrackingPortal';
 import AccidentLog from './components/AccidentLog';
 import DataManagement from './components/DataManagement';
 import FleetOracle from './components/FleetOracle';
@@ -353,8 +352,6 @@ const App: React.FC = () => {
         return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onAddAccident={handleAddAccident} onUpdateAccident={handleUpdateAccident} onUpdateStatus={handleUpdateAccidentStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
-      case 'tracking':
-        return <TrackingPortal bikes={bikes} />;
       case 'system':
         return (
           <DataManagement 

@@ -45,7 +45,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       children: [
         { id: 'fleet', label: 'Registry', icon: '🏍️' },
         { id: 'drivers', label: 'Operators', icon: '👤' },
-        { id: 'tracking', label: 'Live Track', icon: '📍' },
       ]
     },
     { 
@@ -203,7 +202,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               { id: 'incidents', label: 'Incidents', icon: '⚠️' },
               { id: 'fines', label: 'Fines', icon: '🚔' },
               { id: 'communications', label: 'Comms', icon: '📡' },
-              { id: 'tracking', label: 'Track', icon: '📍' },
               { id: 'system', label: 'System', icon: '⚙️' },
             ] : role === 'mechanic' ? [
               { id: 'mechanic-portal', label: 'Technical', icon: '🛠️' },

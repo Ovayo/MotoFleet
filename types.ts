@@ -14,11 +14,11 @@ export interface Bike {
   notes?: string;
   licenseDiskExpiry?: string;
   enatisVerified?: boolean;
-  // tracker property added to fix TrackingPortal errors
+  // Added tracker property to support live telemetry features in TrackingPortal
   tracker?: {
-    status: 'moving' | 'parked' | 'ignited';
     lat: number;
     lng: number;
+    status: 'moving' | 'parked' | 'ignited';
     battery: number;
     signalStrength: string;
     speed: number;
@@ -113,4 +113,4 @@ export interface FleetContext {
   isCloudSyncing: boolean;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'tracking' | 'incidents' | 'system';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'incidents' | 'system';
