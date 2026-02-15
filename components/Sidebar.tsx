@@ -35,8 +35,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const isSuperAdmin = localStorage.getItem('motofleet_super_admin_auth') === 'true';
 
   const adminGroups: MenuGroup[] = [
+    ...(isSuperAdmin ? [{ id: 'g-master', label: 'Master', icon: '👑', viewId: 'super-admin' as View }] : []),
     { id: 'g-hub', label: 'Hub', icon: '📊', viewId: 'dashboard' },
     { 
       id: 'g-assets', 
@@ -79,10 +81,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const groups = role === 'admin' ? adminGroups : role === 'mechanic' ? mechanicGroups : driverGroups;
-  const themeColor = role === 'admin' ? 'blue' : role === 'mechanic' ? 'amber' : 'green';
+  const themeColor = isSuperAdmin ? 'indigo' : role === 'admin' ? 'blue' : role === 'mechanic' ? 'amber' : 'green';
 
-  const colorMap: Record<string, string> = { blue: 'bg-blue-600', amber: 'bg-amber-600', green: 'bg-green-600' };
-  const textActiveMap: Record<string, string> = { blue: 'text-blue-600', amber: 'text-amber-600', green: 'text-green-600' };
+  const colorMap: Record<string, string> = { blue: 'bg-blue-600', amber: 'bg-amber-600', green: 'bg-green-600', indigo: 'bg-indigo-600' };
+  const textActiveMap: Record<string, string> = { blue: 'text-blue-600', amber: 'text-amber-600', green: 'text-green-600', indigo: 'text-indigo-600' };
 
   const handleGroupClick = (group: MenuGroup) => {
     if (group.viewId) {
@@ -194,6 +196,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           
           <nav className="space-y-1.5 flex-1 overflow-y-auto pr-2 no-scrollbar">
             {(role === 'admin' ? [
+              ...(isSuperAdmin ? [{ id: 'super-admin', label: 'Provisioning', icon: '👑' }] : []),
               { id: 'dashboard', label: 'Overview', icon: '📊' },
               { id: 'fleet', label: 'Fleet', icon: '🏍️' },
               { id: 'drivers', label: 'Operators', icon: '👤' },

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 interface AdminLoginProps {
   onLogin: (passcode: string, fleetId: string, fleetName?: string) => boolean;
+  onSuperAdminLogin: () => void;
   onSwitchRole?: (role: 'admin' | 'driver' | 'mechanic') => void;
 }
 
@@ -11,7 +12,7 @@ interface RegisteredFleet {
   name: string;
 }
 
-const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSwitchRole }) => {
+const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onSwitchRole }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [passcode, setPasscode] = useState('');
   const [fleetId, setFleetId] = useState('');
@@ -26,6 +27,12 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSwitchRole }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Super Admin Backdoor
+    if (passcode === 'superadmin2026') {
+      onSuperAdminLogin();
+      return;
+    }
 
     if (mode === 'register') {
       const exists = registry.some(f => f.id.toLowerCase() === fleetId.toLowerCase());
@@ -118,7 +125,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSwitchRole }) => {
                 onChange={(e) => setFleetId(e.target.value)}
                 placeholder="e.g. jhb_north_01"
                 className="w-full px-6 py-4 bg-black/30 border border-white/10 rounded-2xl outline-none transition-all text-white placeholder:text-white/10 focus:border-blue-500/50 focus:bg-black/50 font-bold"
-                required
+                required={mode === 'register'}
               />
             </div>
 

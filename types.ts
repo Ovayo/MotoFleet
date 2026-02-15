@@ -113,4 +113,4 @@ export interface FleetContext {
   isCloudSyncing: boolean;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'incidents' | 'system';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'incidents' | 'system' | 'super-admin';

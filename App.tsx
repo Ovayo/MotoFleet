@@ -18,6 +18,7 @@ import NotificationCenter from './components/NotificationCenter';
 import AccidentLog from './components/AccidentLog';
 import DataManagement from './components/DataManagement';
 import FleetOracle from './components/FleetOracle';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
 import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
@@ -27,6 +28,10 @@ const App: React.FC = () => {
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
+  });
+
+  const [isSuperAdminAuthenticated, setIsSuperAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('motofleet_super_admin_auth') === 'true';
   });
 
   const [fleetId, setFleetId] = useState<string | null>(() => {
@@ -45,6 +50,7 @@ const App: React.FC = () => {
   const cloud = useMemo(() => new MotoFleetCloud(fleetId || 'default'), [fleetId]);
 
   const [view, setView] = useState<View>(
+    isSuperAdminAuthenticated ? 'super-admin' :
     isDedicatedDriverMode ? 'driver-profile' : 
     isDedicatedMechanicMode ? 'mechanic-portal' : 'dashboard'
   );
@@ -68,7 +74,7 @@ const App: React.FC = () => {
   useEffect(() => {
     let isSubscribed = true;
     const hydrate = async () => {
-      if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode) {
+      if (!fleetId && !isDedicatedDriverMode && !isDedicatedMechanicMode && !isSuperAdminAuthenticated) {
         setLoading(false);
         setIsHydrated(false);
         return;
@@ -111,7 +117,7 @@ const App: React.FC = () => {
 
     hydrate();
     return () => { isSubscribed = false; };
-  }, [fleetId, cloud]);
+  }, [fleetId, cloud, isSuperAdminAuthenticated]);
 
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('bikes', bikes); }, [bikes, isHydrated, fleetId]);
   useEffect(() => { if (isHydrated && fleetId) cloud.persist('drivers', drivers); }, [drivers, isHydrated, fleetId]);
@@ -257,12 +263,39 @@ const App: React.FC = () => {
     return false;
   };
 
+  const handleSuperAdminLogin = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setIsSuperAdminAuthenticated(true);
+      localStorage.setItem('motofleet_super_admin_auth', 'true');
+      setView('super-admin');
+      setIsTransitioning(false);
+    }, 800);
+  };
+
+  const handleImpersonateFleet = (fId: string, fName: string) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setFleetId(fId);
+      setFleetName(fName);
+      localStorage.setItem('active_fleet_id', fId);
+      localStorage.setItem('active_fleet_name', fName);
+      localStorage.setItem('motofleet_admin_auth_v1', 'true');
+      setIsAdminAuthenticated(true);
+      setRole('admin');
+      setView('dashboard');
+      setIsTransitioning(false);
+    }, 600);
+  };
+
   const handleLogout = () => {
     setLoading(true);
     setTimeout(() => {
       setLoggedDriver(null);
       setIsAdminAuthenticated(false);
+      setIsSuperAdminAuthenticated(false);
       localStorage.removeItem('motofleet_admin_auth_v1');
+      localStorage.removeItem('motofleet_super_admin_auth');
       localStorage.removeItem('active_fleet_id');
       localStorage.removeItem('active_fleet_name');
       setFleetId(null);
@@ -291,6 +324,10 @@ const App: React.FC = () => {
   };
 
   const renderView = () => {
+    if (isSuperAdminAuthenticated && view === 'super-admin') {
+      return <SuperAdminDashboard onImpersonate={handleImpersonateFleet} onLogout={handleLogout} />;
+    }
+
     if (role === 'mechanic') {
       return (
         <MechanicPortal 
@@ -306,8 +343,8 @@ const App: React.FC = () => {
       );
     }
 
-    if (!isAdminAuthenticated && role === 'admin') {
-      return <AdminLogin onLogin={handleAdminLogin} onSwitchRole={switchPortalRole} />;
+    if (!isAdminAuthenticated && role === 'admin' && !isSuperAdminAuthenticated) {
+      return <AdminLogin onLogin={handleAdminLogin} onSuperAdminLogin={handleSuperAdminLogin} onSwitchRole={switchPortalRole} />;
     }
 
     if (role === 'driver') {
@@ -366,7 +403,7 @@ const App: React.FC = () => {
     }
   };
 
-  const showSidebar = isAdminAuthenticated || (role === 'mechanic') || (role === 'driver' && (loggedDriver || isAdminAuthenticated));
+  const showSidebar = (isAdminAuthenticated || isSuperAdminAuthenticated) || (role === 'mechanic') || (role === 'driver' && (loggedDriver || isAdminAuthenticated));
 
   if (loading) return <LoadingScreen />;
 
@@ -379,7 +416,7 @@ const App: React.FC = () => {
           activeView={view} 
           setView={handleSetView} 
           role={role} 
-          isAdminAuthenticated={isAdminAuthenticated}
+          isAdminAuthenticated={isAdminAuthenticated || isSuperAdminAuthenticated}
           hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
           onSwitchMode={switchPortalRole}
         />
@@ -391,13 +428,18 @@ const App: React.FC = () => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
-                  {role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
+                  {isSuperAdminAuthenticated && view === 'super-admin' ? 'Master Control' : role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
                 </h1>
                 {isAdminAuthenticated && (
                   <div className="flex items-center space-x-2 ml-4">
                     <span className="hidden sm:inline-block text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
                       {fleetName}
                     </span>
+                    {isSuperAdminAuthenticated && (
+                       <span className="hidden sm:inline-block text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-full uppercase tracking-widest border border-indigo-100">
+                        Provider Link Active
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -406,6 +448,7 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-2 md:space-x-4">
               <button onClick={handleLogout} className="text-[9px] md:text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors">Sign Out</button>
               <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black shadow-lg text-sm md:text-base overflow-hidden ${
+                isSuperAdminAuthenticated ? 'bg-indigo-600 shadow-indigo-100' :
                 isAdminAuthenticated ? 'bg-blue-600 shadow-blue-100' : 
                 role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
                 'bg-green-600 shadow-green-100'
@@ -417,7 +460,7 @@ const App: React.FC = () => {
                     (loggedDriver || drivers[0])?.name.substring(0, 2).toUpperCase()
                   )
                 ) : (
-                  isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : 'AS'
+                  isSuperAdminAuthenticated ? 'MA' : isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : 'AS'
                 )}
               </div>
             </div>

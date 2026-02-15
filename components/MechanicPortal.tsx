@@ -210,7 +210,7 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
   };
 
   const handleAssignWorkshop = (bikeId: string, workshopId: string) => {
-    setBikes(prev => prev.map(b => b.id === bikeId ? { ...b, assignedWorkshopId: workshopId === 'none' ? undefined : workshopId } : b));
+    setBikes(prev => prev.map(b => b.id === bikeId ? { ...b, status: 'maintenance', assignedWorkshopId: workshopId === 'none' ? undefined : workshopId } : b));
     setAssigningWorkshopBikeId(null);
   };
 
@@ -355,26 +355,49 @@ const MechanicPortal: React.FC<MechanicPortalProps> = ({
               <div className="divide-y divide-gray-50">
                 {roadmapBikes.map(bike => {
                    const status = getServiceStatus(bike.id);
+                   const isInMaintenance = bike.status === 'maintenance';
+                   
                    return (
-                     <div key={bike.id} className="p-6 flex items-center justify-between hover:bg-gray-50/50">
+                     <div key={bike.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50/50 gap-4">
                         <div className="flex items-center space-x-6">
-                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 ${
                              status.status === 'overdue' ? 'bg-red-50 text-red-600' : 
                              status.status === 'due' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
                            }`}>
                              {status.status === 'overdue' ? '🛑' : status.status === 'due' ? '⚠️' : '✅'}
                            </div>
-                           <div>
-                              <h4 className="font-black text-gray-800 text-sm uppercase">{bike.licenseNumber}</h4>
+                           <div className="min-w-0">
+                              <h4 className="font-black text-gray-800 text-sm uppercase truncate">{bike.licenseNumber}</h4>
                               <p className="text-[9px] text-gray-400 font-bold uppercase">Last Service: {status.lastDate}</p>
                            </div>
                         </div>
-                        <div className="text-right">
-                           <p className={`text-xl font-black ${
-                             status.status === 'overdue' ? 'text-red-600' : 
-                             status.status === 'due' ? 'text-amber-600' : 'text-green-600'
-                           }`}>{status.days} Days</p>
-                           <p className="text-[9px] font-black uppercase text-gray-400">Since Hub Visit</p>
+                        
+                        <div className="flex items-center justify-between md:justify-end gap-8 flex-1">
+                          <div className="text-right">
+                             <p className={`text-xl font-black ${
+                               status.status === 'overdue' ? 'text-red-600' : 
+                               status.status === 'due' ? 'text-amber-600' : 'text-green-600'
+                             }`}>{status.days} Days</p>
+                             <p className="text-[9px] font-black uppercase text-gray-400">Since Hub Visit</p>
+                          </div>
+                          
+                          <div className="shrink-0">
+                            {isInMaintenance ? (
+                              <div className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                                Work in Progress
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => setAssigningWorkshopBikeId(bike.id)}
+                                className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 ${
+                                  status.status === 'overdue' ? 'bg-red-600 text-white shadow-red-100' : 'bg-gray-900 text-white shadow-gray-200'
+                                }`}
+                              >
+                                Dispatch to Workshop
+                              </button>
+                            )}
+                          </div>
                         </div>
                      </div>
                    );
