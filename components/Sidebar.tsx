@@ -40,11 +40,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'g-hub', label: 'Hub', icon: '📊', viewId: 'dashboard' },
     { 
       id: 'g-assets', 
-      label: 'Assets', 
+      label: 'Fleet', 
       icon: '🏍️', 
       children: [
-        { id: 'fleet', label: 'Fleet Registry', icon: '🏍️' },
-        { id: 'drivers', label: 'Operator Hub', icon: '👤' },
+        { id: 'fleet', label: 'Registry', icon: '🏍️' },
+        { id: 'drivers', label: 'Operators', icon: '👤' },
         { id: 'tracking', label: 'Live Track', icon: '📍' },
       ]
     },
@@ -54,24 +54,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: '💰', 
       children: [
         { id: 'payments', label: 'Ledger', icon: '💰' },
-        { id: 'fines', label: 'Traffic Fines', icon: '🚔' },
+        { id: 'fines', label: 'Fines', icon: '🚔' },
       ]
     },
     { 
       id: 'g-ops', 
-      label: 'Ops', 
-      icon: '📡', 
+      label: 'More', 
+      icon: '⚙️', 
       children: [
         { id: 'maintenance', label: 'Service Log', icon: '🔧' },
-        { id: 'incidents', label: 'Incident Log', icon: '⚠️' },
+        { id: 'incidents', label: 'Accidents', icon: '⚠️' },
         { id: 'communications', label: 'Comms Hub', icon: '📡' },
-      ]
-    },
-    {
-      id: 'g-system',
-      label: 'System',
-      icon: '⚙️',
-      children: [
         { id: 'system', label: 'Sync & Cloud', icon: '🔄' },
       ]
     }
@@ -113,30 +106,37 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <nav ref={mobileMenuRef} className="md:hidden fixed bottom-0 left-0 right-0 z-[110] bg-white/90 backdrop-blur-2xl border-t border-gray-100 pb-safe shadow-[0_-15px_35px_rgba(0,0,0,0.08)]">
+      {/* Mobile Navigation Overhaul */}
+      <nav ref={mobileMenuRef} className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] w-[92%] max-w-md">
+        {/* Animated Bottom Sheet (Submenu) */}
         {groups.map(group => group.children && openGroup === group.id && (
-          <div key={`sub-${group.id}`} className="absolute bottom-20 left-4 right-4 bg-white/95 backdrop-blur-3xl rounded-[2.5rem] p-4 shadow-2xl border border-gray-100 animate-in slide-in-from-bottom-6 duration-300">
-            <div className="p-3 border-b border-gray-50 mb-2">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{group.label} Operations</p>
+          <div key={`sub-${group.id}`} className="absolute bottom-[calc(100%+12px)] left-0 right-0 bg-white/95 backdrop-blur-3xl rounded-[2.5rem] p-5 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border border-white/20 animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="flex justify-between items-center px-4 mb-4 border-b border-gray-50 pb-3">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{group.label} Actions</p>
+              <button onClick={() => setOpenGroup(null)} className="text-gray-300 hover:text-gray-600 text-2xl">&times;</button>
             </div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-2">
               {group.children.map(child => (
                 <button
                   key={child.id}
                   onClick={() => { setView(child.id as View); setOpenGroup(null); }}
-                  className={`flex items-center space-x-4 p-4 rounded-2xl transition-all ${activeView === child.id ? 'bg-gray-50 border-gray-100 shadow-inner' : 'hover:bg-gray-50/50'}`}
+                  className={`flex items-center space-x-4 p-4 rounded-2xl transition-all active:scale-[0.98] ${activeView === child.id ? 'bg-gray-50 border border-gray-100 shadow-inner' : 'hover:bg-gray-50/50'}`}
                 >
-                  <span className="text-2xl">{child.icon}</span>
+                  <span className="text-2xl filter drop-shadow-sm">{child.icon}</span>
                   <div className="text-left">
                     <span className={`block text-xs font-black uppercase tracking-tight ${activeView === child.id ? textActiveMap[themeColor] : 'text-gray-800'}`}>{child.label}</span>
                   </div>
+                  {activeView === child.id && <div className={`ml-auto w-1.5 h-1.5 rounded-full ${colorMap[themeColor]}`}></div>}
                 </button>
               ))}
             </div>
+            {/* Action Sheet Tip */}
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 rotate-45 border-r border-b border-white/20 -z-10"></div>
           </div>
         ))}
 
-        <div className="flex items-center justify-around h-20 px-2 relative">
+        {/* The Floating Action Capsule */}
+        <div className="bg-white/80 backdrop-blur-2xl border border-white/40 rounded-[2.5rem] h-20 shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex items-center justify-around px-2 relative overflow-hidden">
           {groups.map((group) => {
             const isAnyChildActive = group.children?.some(c => c.id === activeView);
             const isActive = activeView === group.viewId || isAnyChildActive;
@@ -145,21 +145,28 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={group.id}
                 onClick={() => handleGroupClick(group)}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${isActive || isOpen ? textActiveMap[themeColor] : 'text-gray-400'}`}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative z-10 ${isActive || isOpen ? textActiveMap[themeColor] : 'text-gray-400'}`}
               >
-                <div className={`relative transition-transform duration-300 ${isOpen ? 'scale-125' : ''}`}>
-                  <span className={`text-2xl mb-0.5 transition-transform ${isActive ? 'scale-110' : 'opacity-70'}`}>{group.icon}</span>
-                  {group.children && (
-                    <div className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-gray-100 rounded-full border border-white flex items-center justify-center">
-                      <span className="text-[7px] font-black text-gray-500">{group.children.length}</span>
-                    </div>
-                  )}
+                <div className={`relative transition-all duration-300 ${isOpen || isActive ? 'scale-110 -translate-y-1' : 'scale-100 opacity-60'}`}>
+                   <span className="text-2xl mb-0.5">{group.icon}</span>
+                   {group.children && !isActive && !isOpen && (
+                    <div className="absolute -top-1 -right-1.5 w-2 h-2 bg-gray-200 rounded-full border border-white"></div>
+                   )}
                 </div>
-                <span className={`text-[8px] font-black uppercase tracking-tight transition-all ${isActive ? 'opacity-100' : 'opacity-60'}`}>{group.label}</span>
-                {isActive && <div className={`absolute top-0 w-8 h-1 rounded-b-full ${colorMap[themeColor]}`}></div>}
+                <span className={`text-[8px] font-black uppercase tracking-tighter transition-all ${isActive ? 'opacity-100' : 'opacity-40'}`}>{group.label}</span>
+                
+                {/* Active Indicator Glow */}
+                {(isActive || isOpen) && (
+                  <div className={`absolute inset-x-2 inset-y-2 rounded-2xl opacity-10 blur-md ${colorMap[themeColor]}`}></div>
+                )}
               </button>
             );
           })}
+
+          {/* Integrated Role Switcher in Mobile Nav */}
+          {!hideSwitcher && isAdminAuthenticated && (
+            <div className="w-[1px] h-8 bg-gray-100 mx-1"></div>
+          )}
           {!hideSwitcher && isAdminAuthenticated && (
             <button 
               onClick={() => {
@@ -167,15 +174,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onSwitchMode(roles[(roles.indexOf(role) + 1) % roles.length]);
                 setOpenGroup(null);
               }}
-              className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 group"
+              className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 group relative z-10"
             >
-              <div className="w-9 h-9 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-lg shadow-inner group-active:scale-90 transition-transform">🔄</div>
-              <span className="text-[8px] font-black uppercase tracking-tight mt-0.5 opacity-60">Mode</span>
+              <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-lg shadow-inner group-active:scale-90 transition-transform">🔄</div>
+              <span className="text-[7px] font-black uppercase tracking-widest mt-1 opacity-40">Role</span>
             </button>
           )}
         </div>
       </nav>
 
+      {/* Desktop Sidebar (Unchanged as it is already optimized) */}
       <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 fixed h-full z-50 flex-col">
         <div className="p-6 h-full flex flex-col">
           <div className="flex items-center space-x-3 mb-10">

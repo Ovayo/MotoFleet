@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Bike, Driver, MaintenanceRecord, Payment, Workshop } from '../types';
 import { 
@@ -285,7 +286,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                       'bg-amber-100 text-amber-700'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${bike.status === 'active' ? 'bg-green-500' : bike.status === 'maintenance' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
-                      <span>{bike.status}</span>
+                      <span>{driver ? `${bike.status} - ${driver.name}` : 'Unassigned'}</span>
                     </div>
                   </div>
                 </div>
@@ -418,7 +419,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                             'bg-amber-50 border-amber-100 text-amber-700'
                           }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${bike.status === 'active' ? 'bg-green-500' : bike.status === 'maintenance' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
-                            <span>{bike.status}</span>
+                            <span>{driver ? `${bike.status} - ${driver.name}` : 'Unassigned'}</span>
                           </div>
                           <select 
                             className="absolute inset-0 opacity-0 cursor-pointer"
