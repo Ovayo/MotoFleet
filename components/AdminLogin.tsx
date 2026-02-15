@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 interface AdminLoginProps {
   onLogin: (passcode: string, fleetId: string, fleetName?: string) => boolean;
+  onSwitchRole?: (role: 'admin' | 'driver' | 'mechanic') => void;
 }
 
 interface RegisteredFleet {
@@ -10,7 +11,7 @@ interface RegisteredFleet {
   name: string;
 }
 
-const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
+const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSwitchRole }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [passcode, setPasscode] = useState('');
   const [fleetId, setFleetId] = useState('');
@@ -27,7 +28,6 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
     setError(null);
 
     if (mode === 'register') {
-      // Registration Logic
       const exists = registry.some(f => f.id.toLowerCase() === fleetId.toLowerCase());
       if (exists) {
         setError("Fleet ID already in use. Please choose another.");
@@ -39,10 +39,8 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
       setRegistry(newRegistry);
       localStorage.setItem('motofleet_master_registry', JSON.stringify(newRegistry));
       
-      // Proceed to login with new fleet
       onLogin(passcode, newFleet.id, newFleet.name);
     } else {
-      // Login Logic
       const fleet = registry.find(f => f.id.toLowerCase() === fleetId.toLowerCase());
       if (!fleet) {
         setError("Unknown Fleet ID. Register below if new.");
@@ -76,8 +74,28 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
           </p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[3.5rem] shadow-2xl border border-white/10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[3.5rem] shadow-2xl border border-white/10 relative">
+          {onSwitchRole && (
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-full flex justify-center">
+              <div className="bg-gray-900 border border-white/10 rounded-full p-1 flex gap-1 shadow-2xl backdrop-blur-md">
+                <button 
+                  type="button"
+                  className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg"
+                >
+                  Admin
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => onSwitchRole('driver')}
+                  className="text-gray-500 hover:text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors"
+                >
+                  Driver Hub
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             {mode === 'register' && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                 <label className="block text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] ml-1">Business Name</label>

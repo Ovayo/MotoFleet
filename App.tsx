@@ -279,6 +279,17 @@ const App: React.FC = () => {
     }, 1200);
   };
 
+  const switchPortalRole = (newRole: 'admin' | 'driver' | 'mechanic') => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setRole(newRole);
+      if (newRole === 'admin') setView('dashboard');
+      if (newRole === 'mechanic') setView('mechanic-portal');
+      if (newRole === 'driver') setView('driver-profile');
+      setIsTransitioning(false);
+    }, 500);
+  };
+
   const renderView = () => {
     if (role === 'mechanic') {
       return (
@@ -295,8 +306,8 @@ const App: React.FC = () => {
       );
     }
 
-    if (!isAdminAuthenticated && !isDedicatedDriverMode) {
-      return <AdminLogin onLogin={handleAdminLogin} />;
+    if (!isAdminAuthenticated && role === 'admin') {
+      return <AdminLogin onLogin={handleAdminLogin} onSwitchRole={switchPortalRole} />;
     }
 
     if (role === 'driver') {
@@ -321,7 +332,7 @@ const App: React.FC = () => {
         );
       }
       // Only show login if NOT admin (or if admin role is selected but no drivers exist)
-      if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} />;
+      if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} onSwitchRole={switchPortalRole} />;
       return <div className="p-20 text-center font-black text-gray-300 uppercase tracking-widest">No Active Operators Enrolled</div>;
     }
 
@@ -364,16 +375,7 @@ const App: React.FC = () => {
           role={role} 
           isAdminAuthenticated={isAdminAuthenticated}
           hideSwitcher={isDedicatedDriverMode || isDedicatedMechanicMode}
-          onSwitchMode={(newRole) => {
-            setIsTransitioning(true);
-            setTimeout(() => {
-              setRole(newRole);
-              if (newRole === 'admin') setView('dashboard');
-              if (newRole === 'mechanic') setView('mechanic-portal');
-              if (newRole === 'driver') setView('driver-profile');
-              setIsTransitioning(false);
-            }, 500);
-          }}
+          onSwitchMode={switchPortalRole}
         />
       )}
       
