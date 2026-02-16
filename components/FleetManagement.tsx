@@ -13,6 +13,7 @@ interface FleetManagementProps {
   payments: Payment[];
   weeklyTarget: number;
   workshops: Workshop[];
+  onAdminViewHub?: (driver: Driver) => void;
 }
 
 const MiniCostChart = ({ bikeId, maintenance }: { bikeId: string, maintenance: MaintenanceRecord[] }) => {
@@ -45,7 +46,7 @@ const MiniCostChart = ({ bikeId, maintenance }: { bikeId: string, maintenance: M
   );
 };
 
-const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, drivers, maintenance, payments, weeklyTarget, workshops }) => {
+const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, drivers, maintenance, payments, weeklyTarget, workshops, onAdminViewHub }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBikeId, setEditingBikeId] = useState<string | null>(null);
   const [historyBikeId, setHistoryBikeId] = useState<string | null>(null);
@@ -141,7 +142,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
       if (sortBy === 'service') {
         const statusA = getServiceStatus(a.id);
         const statusB = getServiceStatus(b.id);
-        // Lower progress means more urgent (due/overdue)
         return statusA.progress - statusB.progress;
       }
       return 0;
@@ -183,13 +183,11 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     }
   };
 
-  // Fixed: Corrected variable name from 'b' to 'bike' in the map callback to fix "Cannot find name 'b'" error
   const handleAssignWorkshop = (bikeId: string, workshopId: string) => {
     setBikes(prev => prev.map(bike => bike.id === bikeId ? { ...bike, status: 'maintenance', assignedWorkshopId: workshopId === "none" ? undefined : workshopId } : bike));
     setAssigningWorkshopBikeId(null);
   };
 
-  // Fixed: Corrected variable name from 'b' to 'bike' in the map callback to fix "Cannot find name 'b'" error
   const handleAssignDriver = (bikeId: string, driverId: string) => {
     setBikes(prev => prev.map(bike => bike.id === bikeId ? { ...bike, assignedDriverId: driverId === "none" ? undefined : driverId } : bike));
     setAssigningBikeId(null);
@@ -300,9 +298,12 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <h4 className="font-black text-gray-800 text-lg uppercase leading-tight">{bike.licenseNumber}</h4>
                     <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
                     <div className="mt-1 flex items-center">
-                       <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${driver ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                         {driver ? driver.name : 'Unassigned'}
-                       </span>
+                       <button 
+                         onClick={() => driver && onAdminViewHub?.(driver)}
+                         className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md transition-colors ${driver ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' : 'bg-gray-100 text-gray-400'}`}
+                       >
+                         {driver ? `👤 ${driver.name}` : 'Unassigned'}
+                       </button>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -346,10 +347,10 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <p className="text-xs font-bold text-gray-800">{driver?.name || 'Unassigned'}</p>
                   </div>
                   <button 
-                    onClick={() => setAssigningBikeId(bike.id)}
+                    onClick={() => driver ? onAdminViewHub?.(driver) : setAssigningBikeId(bike.id)}
                     className="px-3 py-1.5 bg-white border border-gray-100 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-sm hover:bg-blue-50 transition-colors"
                   >
-                    {driver ? 'Change' : 'Assign'}
+                    {driver ? 'View Hub' : 'Assign'}
                   </button>
                   {driver && <button onClick={() => sendWhatsApp(driver)} className="text-xl ml-1">💬</button>}
                 </div>
@@ -405,9 +406,12 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                       <div className="font-black text-gray-900 uppercase tracking-tight text-lg leading-tight">{bike.licenseNumber}</div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase">{bike.makeModel}</p>
                       <div className="mt-1.5 flex items-center">
-                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border ${driver ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
-                           {driver ? driver.name : 'Unassigned'}
-                         </span>
+                         <button 
+                           onClick={() => driver && onAdminViewHub?.(driver)}
+                           className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border transition-all ${driver ? 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+                         >
+                           {driver ? `👤 ${driver.name}` : 'Unassigned'}
+                         </button>
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -486,6 +490,15 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                           <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
                         </div>
                         <div className="flex items-center justify-end space-x-2 shrink-0">
+                          {driver && (
+                            <button 
+                              onClick={() => onAdminViewHub?.(driver)}
+                              className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-colors" 
+                              title="Enter Driver Hub (Spectator)"
+                            >
+                              👤
+                            </button>
+                          )}
                           <button 
                             onClick={() => setAssigningBikeId(bike.id)} 
                             className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors" 

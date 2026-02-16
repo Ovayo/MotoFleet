@@ -98,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
         </div>
 
         <div className="space-y-6">
-           <div className="bg-white p-8 rounded-2xl md:rounded-[3rem] shadow-sm border border-gray-100">
+           <div className="bg-white p-8 rounded-2xl md:rounded-[3rem] shadow-sm border border-gray-100 h-full">
             <h3 className="text-[11px] font-black text-gray-800 uppercase tracking-tight mb-8 text-center">Asset Distribution</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -110,21 +110,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
-          
-          <div className="bg-gray-900 p-8 rounded-[2rem] md:rounded-[3rem] shadow-xl text-white relative overflow-hidden group hover:scale-[1.02] transition-transform">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-             <div className="relative z-10 flex flex-col items-center justify-center text-center">
-               <div className="text-4xl mb-4 group-hover:animate-bounce">🌀</div>
-               <h3 className="text-lg font-black uppercase tracking-tight mb-2">Kinetic Pulse</h3>
-               <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest mb-6">Autonomous Fleet Singularity</p>
-               <div className="flex items-center gap-2 mb-4">
-                 {[...Array(4)].map((_, i) => (
-                   <div key={i} className={`w-1 h-4 rounded-full bg-indigo-500 animate-pulse`} style={{ animationDelay: `${i * 0.2}s` }}></div>
-                 ))}
-               </div>
-               <p className="text-xs font-black text-indigo-400">98.4% Efficiency</p>
-             </div>
           </div>
         </div>
       </div>

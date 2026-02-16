@@ -16,6 +16,8 @@ interface DriverProfileProps {
   workshops: Workshop[];
   weeklyTarget: number;
   isAdminViewing?: boolean;
+  allDrivers?: Driver[]; // Added to support quick-switch
+  onAdminSwitchDriver?: (driver: Driver) => void; // Added to support quick-switch
 }
 
 const DriverProfile: React.FC<DriverProfileProps> = ({ 
@@ -31,7 +33,9 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   onAddMaintenance,
   workshops = [],
   weeklyTarget,
-  isAdminViewing = false
+  isAdminViewing = false,
+  allDrivers = [],
+  onAdminSwitchDriver
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logFileInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +98,7 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     const unpaidFines = driverFines.filter(f => f?.status === 'unpaid').reduce((acc, f) => acc + (f?.amount || 0), 0);
     const driverAccidents = (accidents || []).filter(a => a.driverId === driver.id);
 
-    // Week by week breakdown for current month (Conceptual 4 weeks)
+    // Week by week breakdown for current month
     const weeklyBreakdown = [1, 2, 3, 4].map(w => {
         const paid = driverPayments.filter(p => p.weekNumber === w).reduce((acc, p) => acc + (p?.amount || 0), 0);
         return { week: w, paid, target: targetThisWeek, balance: paid - targetThisWeek };
@@ -142,7 +146,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     e.preventDefault();
     onAddAccident(accidentFormData);
     setShowAccidentForm(false);
-    alert("Accident reported successfully. The management team will review it immediately.");
   };
 
   const requestSupport = () => {
@@ -161,17 +164,34 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
   return (
     <div className="w-full space-y-6 pb-24 md:pb-8">
+      {/* Admin Spectator Bar */}
       {isAdminViewing && (
-        <div className="bg-blue-600 text-white p-4 rounded-2xl mb-6 flex items-center justify-between shadow-xl animate-in slide-in-from-top-4">
-           <div className="flex items-center space-x-3">
-              <span className="text-xl">🕵️</span>
+        <div className="bg-gray-900 text-white p-4 md:p-6 rounded-[2rem] mb-6 flex flex-col md:flex-row items-center justify-between shadow-2xl animate-in slide-in-from-top-4 border-2 border-blue-500/30 gap-4">
+           <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg animate-pulse">👁️</div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest">Administrator Mode</p>
-                <p className="text-[9px] font-bold opacity-80 uppercase">You are viewing this hub as the operator sees it.</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Spectator Mode Active</p>
+                <p className="text-xs font-bold opacity-80 uppercase">You are viewing <span className="text-white font-black">{driver.name}</span>'s Hub</p>
               </div>
            </div>
-           <div className="flex gap-2">
-             <button onClick={() => setShowFineForm(true)} className="bg-white/20 hover:bg-white/40 px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-colors">+ Assign Fine</button>
+           
+           <div className="flex items-center gap-3 w-full md:w-auto">
+             <div className="flex-1 md:flex-none relative">
+                <select 
+                  onChange={(e) => {
+                    const selected = allDrivers.find(d => d.id === e.target.value);
+                    if (selected && onAdminSwitchDriver) onAdminSwitchDriver(selected);
+                  }}
+                  value={driver.id}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-10"
+                >
+                  {allDrivers.map(d => (
+                    <option key={d.id} value={d.id} className="text-gray-900">{d.name} {d.id === driver.id ? '(Viewing)' : ''}</option>
+                  ))}
+                </select>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">▼</span>
+             </div>
+             <button onClick={() => setShowFineForm(true)} className="bg-red-600 hover:bg-red-700 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg">+ Log Fine</button>
            </div>
         </div>
       )}
@@ -190,12 +210,14 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                         (driver.name || '??').substring(0, 2).toUpperCase()
                     )}
                 </div>
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-10 h-10 bg-white text-emerald-700 rounded-2xl shadow-xl flex items-center justify-center hover:bg-emerald-50 transition-transform active:scale-90 border-2 border-white"
-                >
-                  📸
-                </button>
+                {!isAdminViewing && (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-10 h-10 bg-white text-emerald-700 rounded-2xl shadow-xl flex items-center justify-center hover:bg-emerald-50 transition-transform active:scale-90 border-2 border-white"
+                  >
+                    📸
+                  </button>
+                )}
                 <input type="file" ref={fileInputRef} onChange={handleProfilePhotoChange} accept="image/*" className="hidden" />
              </div>
              <div>

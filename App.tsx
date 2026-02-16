@@ -318,7 +318,13 @@ const App: React.FC = () => {
       setRole(newRole);
       if (newRole === 'admin') setView('dashboard');
       if (newRole === 'mechanic') setView('mechanic-portal');
-      if (newRole === 'driver') setView('driver-profile');
+      if (newRole === 'driver') {
+        // If switching to driver as admin, ensure we have a driver to show
+        if (!loggedDriver && drivers.length > 0) {
+          setLoggedDriver(drivers[0]);
+        }
+        setView('driver-profile');
+      }
       setIsTransitioning(false);
     }, 500);
   };
@@ -348,7 +354,9 @@ const App: React.FC = () => {
     }
 
     if (role === 'driver') {
+      // Logic Fix: If Admin is logged in, always show a driver hub, defaulting to first if none picked
       const activeDriver = loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
+      
       if (activeDriver) {
         return (
           <DriverProfile 
@@ -365,9 +373,13 @@ const App: React.FC = () => {
             workshops={workshops}
             weeklyTarget={WEEKLY_TARGET}
             isAdminViewing={isAdminAuthenticated}
+            allDrivers={drivers} // Pass for quick switch
+            onAdminSwitchDriver={(d) => setLoggedDriver(d)} // Pass for quick switch
           />
         );
       }
+      
+      // Only show login if NOT an admin
       if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} onSwitchRole={switchPortalRole} />;
       return <div className="p-20 text-center font-black text-gray-300 uppercase tracking-widest">No Active Operators Enrolled</div>;
     }
@@ -376,7 +388,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
       case 'fleet':
-        return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
+        return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} onAdminViewHub={handleAdminViewDriverHub} />;
       case 'drivers':
         return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} onAdminViewHub={handleAdminViewDriverHub} />;
       case 'payments':
@@ -408,7 +420,7 @@ const App: React.FC = () => {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="flex min-h-[100dvh] bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+    <div className="flex min-h-[100dvh] font-sans overflow-x-hidden bg-gray-50 text-gray-900">
       {isTransitioning && <LoadingScreen isFast />}
       
       {showSidebar && (
@@ -424,15 +436,15 @@ const App: React.FC = () => {
       
       <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8' : ''}`}>
         {showSidebar && (
-          <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
+          <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center p-4 md:p-5 rounded-2xl md:rounded-[2rem] border sticky top-4 z-20 shadow-sm gap-3 transition-all bg-white/70 backdrop-blur-md border-gray-100">
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
-                <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
+                <h1 className="text-lg md:text-2xl font-black tracking-tight capitalize truncate text-gray-800">
                   {isSuperAdminAuthenticated && view === 'super-admin' ? 'Master Control' : role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
                 </h1>
                 {isAdminAuthenticated && (
                   <div className="flex items-center space-x-2 ml-4">
-                    <span className="hidden sm:inline-block text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
+                    <span className="hidden sm:inline-block text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border bg-blue-50 text-blue-500 border-blue-100">
                       {fleetName}
                     </span>
                     {isSuperAdminAuthenticated && (

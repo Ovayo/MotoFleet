@@ -184,7 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      {/* Desktop Sidebar (Unchanged as it is already optimized) */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 fixed h-full z-50 flex-col">
         <div className="p-6 h-full flex flex-col">
           <div className="flex items-center space-x-3 mb-10">
