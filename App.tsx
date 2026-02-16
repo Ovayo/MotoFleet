@@ -19,7 +19,6 @@ import AccidentLog from './components/AccidentLog';
 import DataManagement from './components/DataManagement';
 import FleetOracle from './components/FleetOracle';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
-import KineticSingularity from './components/KineticSingularity';
 import { MotoFleetCloud } from './services/api';
 
 const App: React.FC = () => {
@@ -376,8 +375,6 @@ const App: React.FC = () => {
     switch (view) {
       case 'dashboard':
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
-      case 'singularity':
-        return <KineticSingularity bikes={bikes} drivers={drivers} />;
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} />;
       case 'drivers':
@@ -411,7 +408,7 @@ const App: React.FC = () => {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className={`flex min-h-[100dvh] font-sans overflow-x-hidden ${view === 'singularity' ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className="flex min-h-[100dvh] bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
       {isTransitioning && <LoadingScreen isFast />}
       
       {showSidebar && (
@@ -427,15 +424,15 @@ const App: React.FC = () => {
       
       <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8' : ''}`}>
         {showSidebar && (
-          <header className={`mb-6 md:mb-10 flex flex-wrap justify-between items-center p-4 md:p-5 rounded-2xl md:rounded-[2rem] border sticky top-4 z-20 shadow-sm gap-3 transition-all ${view === 'singularity' ? 'bg-black/40 backdrop-blur-3xl border-white/5' : 'bg-white/70 backdrop-blur-md border-gray-100'}`}>
+          <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-md p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-gray-100 sticky top-4 z-20 shadow-sm gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
-                <h1 className={`text-lg md:text-2xl font-black tracking-tight capitalize truncate ${view === 'singularity' ? 'text-indigo-400' : 'text-gray-800'}`}>
-                  {isSuperAdminAuthenticated && view === 'super-admin' ? 'Master Control' : view === 'singularity' ? 'The Kinetic Organism' : role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
+                <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight capitalize truncate">
+                  {isSuperAdminAuthenticated && view === 'super-admin' ? 'Master Control' : role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
                 </h1>
                 {isAdminAuthenticated && (
                   <div className="flex items-center space-x-2 ml-4">
-                    <span className={`hidden sm:inline-block text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${view === 'singularity' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-blue-50 text-blue-500 border-blue-100'}`}>
+                    <span className="hidden sm:inline-block text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-widest border border-blue-100">
                       {fleetName}
                     </span>
                     {isSuperAdminAuthenticated && (
