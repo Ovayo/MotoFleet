@@ -20,12 +20,12 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col items-center justify-start md:justify-center p-6 pt-12 md:pt-6 relative overflow-x-hidden">
       {/* Background Decor */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#10B981 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }}></div>
       
-      <div className="max-w-md w-full relative z-10">
-        <div className="text-center mb-10">
+      <div className="max-w-md w-full relative z-10 pb-8">
+        <div className="text-center mb-8">
           <div className="bg-emerald-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
             <span className="text-white text-3xl font-bold">MF</span>
           </div>
@@ -83,7 +83,7 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
           </form>
         </div>
         
-        <p className="text-center mt-12 text-gray-400 text-[9px] font-bold uppercase tracking-[0.2em]">
+        <p className="text-center mt-8 text-gray-400 text-[9px] font-bold uppercase tracking-[0.2em]">
           Secure Gateway Protocol v2.5<br/>
           Integrated Cloud Logistics System
         </p>

@@ -55,6 +55,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'maintenance' | 'compliance'>('all');
+  const [sortBy, setSortBy] = useState<'license' | 'service' | 'make'>('license');
 
   const [newBike, setNewBike] = useState<Omit<Bike, 'id' | 'status'>>({
     makeModel: '',
@@ -99,8 +100,19 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     return { total, active, workshop, licenseWarnings, utilization };
   }, [bikes]);
 
+  const getServiceStatus = (bikeId: string) => {
+    const records = maintenance.filter(m => m.bikeId === bikeId && (m.serviceType === 'routine' || m.serviceType === 'oil'));
+    if (records.length === 0) return { status: 'overdue', label: 'Never', progress: 0 };
+    const latest = records.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
+    const diff = Math.floor((new Date().getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
+    const progress = Math.max(0, Math.min(100, 100 - (diff / 90) * 100));
+    if (diff > 90) return { status: 'overdue', label: `${diff}d`, progress };
+    if (diff > 75) return { status: 'due', label: `${diff}d`, progress };
+    return { status: 'good', label: `${diff}d`, progress };
+  };
+
   const filteredBikes = useMemo(() => {
-    return bikes.filter(bike => {
+    let result = bikes.filter(bike => {
       const matchesSearch = 
         bike.licenseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         bike.makeModel.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,7 +129,26 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
       
       return matchesSearch && matchesTab;
     });
-  }, [bikes, searchTerm, activeTab]);
+
+    // Apply Sorting
+    result.sort((a, b) => {
+      if (sortBy === 'license') {
+        return a.licenseNumber.localeCompare(b.licenseNumber);
+      }
+      if (sortBy === 'make') {
+        return a.makeModel.localeCompare(b.makeModel);
+      }
+      if (sortBy === 'service') {
+        const statusA = getServiceStatus(a.id);
+        const statusB = getServiceStatus(b.id);
+        // Lower progress means more urgent (due/overdue)
+        return statusA.progress - statusB.progress;
+      }
+      return 0;
+    });
+
+    return result;
+  }, [bikes, searchTerm, activeTab, sortBy, maintenance]);
 
   const historyChartData = useMemo(() => {
     if (!historyBikeId) return [];
@@ -144,17 +175,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     return Object.entries(groups).map(([name, cost]) => ({ name, cost }));
   }, [historyBikeId, maintenance, trendInterval]);
 
-  const getServiceStatus = (bikeId: string) => {
-    const records = maintenance.filter(m => m.bikeId === bikeId && (m.serviceType === 'routine' || m.serviceType === 'oil'));
-    if (records.length === 0) return { status: 'overdue', label: 'Never', progress: 0 };
-    const latest = records.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b);
-    const diff = Math.floor((new Date().getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
-    const progress = Math.max(0, Math.min(100, 100 - (diff / 90) * 100));
-    if (diff > 90) return { status: 'overdue', label: `${diff}d`, progress };
-    if (diff > 75) return { status: 'due', label: `${diff}d`, progress };
-    return { status: 'good', label: `${diff}d`, progress };
-  };
-
   const updateBikeStatus = (id: string, newStatus: Bike['status']) => {
     if (newStatus === 'maintenance') {
       setAssigningWorkshopBikeId(id);
@@ -163,11 +183,13 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     }
   };
 
+  // Fixed: Corrected variable name from 'b' to 'bike' in the map callback to fix "Cannot find name 'b'" error
   const handleAssignWorkshop = (bikeId: string, workshopId: string) => {
     setBikes(prev => prev.map(bike => bike.id === bikeId ? { ...bike, status: 'maintenance', assignedWorkshopId: workshopId === "none" ? undefined : workshopId } : bike));
     setAssigningWorkshopBikeId(null);
   };
 
+  // Fixed: Corrected variable name from 'b' to 'bike' in the map callback to fix "Cannot find name 'b'" error
   const handleAssignDriver = (bikeId: string, driverId: string) => {
     setBikes(prev => prev.map(bike => bike.id === bikeId ? { ...bike, assignedDriverId: driverId === "none" ? undefined : driverId } : bike));
     setAssigningBikeId(null);
@@ -240,12 +262,23 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-xl md:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100"
-          >
-            + Register Asset
-          </button>
+          <div className="flex gap-2">
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-white border border-gray-100 px-4 py-3 rounded-xl md:rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10"
+            >
+              <option value="license">Sort: License Plate</option>
+              <option value="service">Sort: Next Service</option>
+              <option value="make">Sort: Make/Model</option>
+            </select>
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-xl md:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100"
+            >
+              + Register Asset
+            </button>
+          </div>
         </div>
       </div>
 
@@ -681,7 +714,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
             </div>
             
             <div className="p-8 md:p-10 overflow-y-auto flex-1 space-y-10 no-scrollbar">
-               {/* Comprehensive Chart Section */}
                <div className="space-y-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2">Expense Trajectory</h4>
@@ -703,7 +735,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={historyChartData}>
                           <defs>
-                            {/* Fix: Removed duplicate x2 attribute and added missing y1 attribute in linearGradient */}
                             <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
                               <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>

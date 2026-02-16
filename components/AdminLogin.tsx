@@ -63,13 +63,13 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-gray-950 flex flex-col items-center justify-start md:justify-center p-6 pt-12 md:pt-6 relative overflow-x-hidden">
       {/* Cinematic Background */}
       <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#3B82F6 0.5px, transparent 0.5px)', backgroundSize: '40px 40px' }}></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div className="max-w-md w-full relative z-10">
-        <div className="text-center mb-10">
+      <div className="max-w-md w-full relative z-10 pb-8">
+        <div className="text-center mb-8">
           <div className="bg-blue-600 w-20 h-20 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-500/40 border-4 border-blue-500/30 group hover:scale-110 transition-transform cursor-pointer">
             <span className="text-white text-3xl font-black tracking-tighter">MF</span>
           </div>
@@ -170,7 +170,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
           </div>
         </div>
         
-        <div className="mt-12 text-center">
+        <div className="mt-8 text-center">
             <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest leading-relaxed">
               MotoFleet Multi-Tenant Grid<br/>
               Cloud isolation active for all identifiers.

@@ -80,13 +80,15 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onImpersonate
             <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10">
               <p className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mb-1">Total Managed Assets</p>
               <h4 className="text-3xl font-black">
-                {Object.values(fleetStats).reduce((acc, s) => acc + s.bikes, 0)}
+                {/* Fixed: Explicitly typed reduce callback parameters to resolve 'unknown' type error for 'bikes' property */}
+                {Object.values(fleetStats).reduce((acc: number, s: FleetStats) => acc + s.bikes, 0)}
               </h4>
             </div>
             <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10">
               <p className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mb-1">Active Ledger Items</p>
               <h4 className="text-3xl font-black">
-                {Object.values(fleetStats).reduce((acc, s) => acc + s.payments, 0)}
+                {/* Fixed: Explicitly typed reduce callback parameters to resolve 'unknown' type error for 'payments' property */}
+                {Object.values(fleetStats).reduce((acc: number, s: FleetStats) => acc + s.payments, 0)}
               </h4>
             </div>
           </div>

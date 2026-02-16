@@ -408,7 +408,7 @@ const App: React.FC = () => {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+    <div className="flex min-h-[100dvh] bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
       {isTransitioning && <LoadingScreen isFast />}
       
       {showSidebar && (
