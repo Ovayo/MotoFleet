@@ -1,6 +1,18 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { Driver, Payment, Bike, MaintenanceRecord, Workshop, TrafficFine, AccidentReport } from '../types';
+import { 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Cell, 
+  ComposedChart,
+  Line,
+  Area
+} from 'recharts';
 
 interface DriverProfileProps {
   driver: Driver;
@@ -16,8 +28,8 @@ interface DriverProfileProps {
   workshops: Workshop[];
   weeklyTarget: number;
   isAdminViewing?: boolean;
-  allDrivers?: Driver[]; // Added to support quick-switch
-  onAdminSwitchDriver?: (driver: Driver) => void; // Added to support quick-switch
+  allDrivers?: Driver[]; 
+  onAdminSwitchDriver?: (driver: Driver) => void; 
 }
 
 const DriverProfile: React.FC<DriverProfileProps> = ({ 
@@ -101,15 +113,57 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     // Week by week breakdown for current month
     const weeklyBreakdown = [1, 2, 3, 4].map(w => {
         const paid = driverPayments.filter(p => p.weekNumber === w).reduce((acc, p) => acc + (p?.amount || 0), 0);
-        return { week: w, paid, target: targetThisWeek, balance: paid - targetThisWeek };
+        return { 
+          name: `Week ${w}`, 
+          paid, 
+          target: targetThisWeek, 
+          balance: paid - targetThisWeek,
+          performance: Math.round((paid / targetThisWeek) * 100)
+        };
     });
 
+    const weeksMet = weeklyBreakdown.filter(w => w.paid >= w.target).length;
+    const consistencyScore = Math.round((weeksMet / 4) * 100);
+
+    // Leaderboard Calculation
+    const leaderboard = (allDrivers.length > 0 ? allDrivers : [driver])
+      .filter(d => !d.isArchived)
+      .map(d => {
+        const dPayments = payments.filter(p => {
+          const dt = new Date(p.date);
+          return p.driverId === d.id && dt.getMonth() === currentMonth && dt.getFullYear() === currentYear;
+        });
+        const dTarget = (d.weeklyTarget || weeklyTarget) * 4;
+        const dPaid = dPayments.reduce((sum, p) => sum + p.amount, 0);
+        const dPerf = Math.round((dPaid / dTarget) * 100);
+        return { 
+          id: d.id, 
+          name: d.name, 
+          performance: dPerf,
+          pic: d.profilePictureUrl,
+          initials: d.name.substring(0,2).toUpperCase()
+        };
+      })
+      .sort((a, b) => b.performance - a.performance);
+
+    const myRank = leaderboard.findIndex(l => l.id === driver.id) + 1;
+
     return { 
-      paidThisWeek, targetThisWeek, weeklyStanding, totalUnpaidFines: unpaidFines, 
-      accidentsCount: driverAccidents.length, currentWeek: CURRENT_WEEK, driverFines, 
-      driverAccidents, weeklyBreakdown, monthlyTotal: monthlyPayments.reduce((a,b) => a + b.amount, 0)
+      paidThisWeek, 
+      targetThisWeek, 
+      weeklyStanding, 
+      totalUnpaidFines: unpaidFines, 
+      accidentsCount: driverAccidents.length, 
+      currentWeek: CURRENT_WEEK, 
+      driverFines, 
+      driverAccidents, 
+      weeklyBreakdown, 
+      monthlyTotal: monthlyPayments.reduce((a,b) => a + b.amount, 0),
+      consistencyScore,
+      leaderboard,
+      myRank
     };
-  }, [payments, fines, accidents, driver.id, driver.weeklyTarget, weeklyTarget]);
+  }, [payments, fines, accidents, driver.id, driver.weeklyTarget, weeklyTarget, allDrivers]);
 
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -230,9 +284,13 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <button onClick={() => setActiveTab('safety')} className="bg-white/10 backdrop-blur-md border border-white/10 px-8 py-4 rounded-[1.8rem] font-black uppercase text-[10px] tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2">
-                <span>🚔</span> Fines: R{stats.totalUnpaidFines}
-            </button>
+            <div className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-[1.8rem] flex items-center gap-4">
+               <div className="text-right">
+                  <p className="text-[8px] font-black uppercase text-white/50">Reliability Index</p>
+                  <p className="text-xl font-black">{stats.consistencyScore}%</p>
+               </div>
+               <div className={`w-3 h-3 rounded-full ${stats.consistencyScore >= 100 ? 'bg-green-400' : stats.consistencyScore >= 75 ? 'bg-amber-400' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse'}`}></div>
+            </div>
             <button onClick={requestSupport} className="bg-white text-emerald-900 px-10 py-4 rounded-[1.8rem] font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-105 transition-all flex items-center justify-center">
                 🆘 Support
             </button>
@@ -327,30 +385,112 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
 
         {activeTab === 'payments' && (
             <div className="space-y-6">
-                <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-8 md:p-12">
-                    <div className="flex justify-between items-center mb-10">
-                        <div>
-                            <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Rental Ledger</h3>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Monthly breakdown for {new Date().toLocaleString('default', { month: 'long' })}</p>
+                {/* Community Leaderboard Hook */}
+                <div className="bg-gray-950 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl mb-8">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-center mb-10">
+                            <div>
+                                <h3 className="text-xl font-black uppercase tracking-tight">Fleet Community Standing</h3>
+                                <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Current Monthly Performance Rank</p>
+                            </div>
+                            <div className="bg-white/10 px-6 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest">
+                                Your Rank: <span className="text-emerald-400">#{stats.myRank}</span>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Monthly Total</p>
-                            <p className="text-2xl font-black text-emerald-600">R{stats.monthlyTotal}</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                            <div className="space-y-3">
+                                {stats.leaderboard.slice(0, 3).map((entry, idx) => (
+                                    <div key={entry.id} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${entry.id === driver.id ? 'bg-emerald-600 border-emerald-500 scale-105 shadow-xl' : 'bg-white/5 border-white/5'}`}>
+                                        <div className="flex items-center space-x-4">
+                                            <span className="text-xl">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</span>
+                                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-black text-[10px] overflow-hidden">
+                                                {entry.pic ? <img src={entry.pic} className="w-full h-full object-cover" /> : entry.initials}
+                                            </div>
+                                            <p className="text-sm font-black uppercase tracking-tight truncate max-w-[120px]">{entry.id === driver.id ? 'YOU' : entry.name}</p>
+                                        </div>
+                                        <span className="text-sm font-black text-emerald-400">{entry.performance}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="text-center md:text-left bg-white/5 p-8 rounded-[2rem] border border-white/5">
+                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-4">Performance Insight</p>
+                                <h4 className="text-2xl font-black leading-tight mb-4 uppercase">
+                                    {stats.myRank <= 3 ? "You are a Fleet Elite!" : stats.myRank <= 10 ? "You are an Emerging Star!" : "Maintain Momentum to Rise!"}
+                                </h4>
+                                <p className="text-xs text-white/50 leading-relaxed uppercase">Compare your performance with top operators to improve your techniques and reach targets faster.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-8 md:p-12">
+                    <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-12">
+                        <div className="max-w-md">
+                            <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Payment Performance</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 mb-8">Weekly settlement trajectory vs mandatory target</p>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                                  <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Monthly Collected</p>
+                                  <p className="text-2xl font-black text-emerald-600">R{stats.monthlyTotal}</p>
+                               </div>
+                               <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                                  <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Reliability</p>
+                                  <p className="text-2xl font-black text-gray-800">{stats.consistencyScore}%</p>
+                               </div>
+                            </div>
+
+                            <div className="mt-8 p-6 bg-blue-50 rounded-3xl border border-blue-100">
+                               <p className="text-[9px] font-black text-blue-600 uppercase mb-2 tracking-widest">System Insight</p>
+                               <p className="text-xs font-bold text-blue-800 leading-relaxed uppercase">
+                                  {stats.consistencyScore === 100 ? "Elite Consistency: You are in the top 5% of operators." : 
+                                   stats.consistencyScore >= 75 ? "Strong Performance: Maintain this level for priority maintenance access." : 
+                                   "Action Required: High arrears risk. Please settle current balance to avoid immobilizer trigger."}
+                               </p>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 w-full h-[300px] bg-gray-50/50 rounded-[2.5rem] p-6 border border-gray-100 shadow-inner">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={stats.weeklyBreakdown}>
+                                    <defs>
+                                        <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.2}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}} />
+                                    <Tooltip 
+                                        cursor={{fill: '#f1f5f9', radius: 12}}
+                                        contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold'}}
+                                    />
+                                    <Bar dataKey="paid" radius={[12, 12, 0, 0]} name="Settled" barSize={40}>
+                                        {stats.weeklyBreakdown.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.paid >= entry.target ? '#10B981' : '#F59E0B'} />
+                                        ))}
+                                    </Bar>
+                                    <Line type="monotone" dataKey="target" stroke="#64748b" strokeWidth={2} strokeDasharray="5 5" name="Target Threshold" dot={false} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         {stats.weeklyBreakdown.map(wb => (
-                            <div key={wb.week} className="p-6 rounded-[2rem] border border-gray-50 bg-gray-50/50 flex items-center justify-between hover:bg-white hover:shadow-lg transition-all group">
+                            <div key={wb.name} className="p-6 rounded-[2rem] border border-gray-50 bg-gray-50/50 flex items-center justify-between hover:bg-white hover:shadow-lg transition-all group">
                                 <div className="flex items-center space-x-6">
                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black transition-colors ${
                                         wb.balance >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-600'
                                     }`}>
-                                        W{wb.week}
+                                        W{wb.name.split(' ')[1]}
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight">Week {wb.week} Settlement</h4>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Target: R{wb.target}</p>
+                                        <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight">{wb.name} Settlement</h4>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Performance: {wb.performance}% of target</p>
                                     </div>
                                 </div>
                                 <div className="text-right flex items-center space-x-8">

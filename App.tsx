@@ -27,11 +27,16 @@ const App: React.FC = () => {
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('motofleet_admin_auth_v1') === 'true';
+    const isTrusted = localStorage.getItem('mf_trusted_env') === 'true';
+    const hasFleet = !!localStorage.getItem('active_fleet_id');
+    const hasAuth = localStorage.getItem('motofleet_admin_auth_v1') === 'true';
+    return hasAuth || (isTrusted && hasFleet);
   });
 
   const [isSuperAdminAuthenticated, setIsSuperAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('motofleet_super_admin_auth') === 'true';
+    const isTrusted = localStorage.getItem('mf_trusted_env') === 'true';
+    const hasAuth = localStorage.getItem('motofleet_super_admin_auth') === 'true';
+    return hasAuth || isTrusted;
   });
 
   const [fleetId, setFleetId] = useState<string | null>(() => {
@@ -316,6 +321,7 @@ const App: React.FC = () => {
       localStorage.removeItem('motofleet_super_admin_auth');
       localStorage.removeItem('active_fleet_id');
       localStorage.removeItem('active_fleet_name');
+      localStorage.removeItem('mf_trusted_env'); // Revoke trust on explicit logout
       setFleetId(null);
       setIsHydrated(false);
       if (isDedicatedDriverMode) {

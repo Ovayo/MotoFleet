@@ -42,13 +42,29 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
   
   const activeDrivers = useMemo(() => drivers.filter(d => !d.isArchived), [drivers]);
 
-  const overdueDrivers = useMemo(() => {
-    return activeDrivers.filter(driver => {
-      const driverPayments = payments.filter(p => p.driverId === driver.id && p.weekNumber === currentWeek);
-      const paidThisWeek = driverPayments.reduce((acc, p) => acc + (p?.amount || 0), 0);
-      const target = driver.weeklyTarget || weeklyTarget;
-      return paidThisWeek < target;
-    });
+  const leaderboardData = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return activeDrivers.map(driver => {
+      const monthPayments = payments.filter(p => {
+        const d = new Date(p.date);
+        return p.driverId === driver.id && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      const totalPaid = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+      const monthlyTarget = (driver.weeklyTarget || weeklyTarget) * 4; // Simplified 4-week basis
+      const performance = Math.round((totalPaid / monthlyTarget) * 100);
+      
+      return {
+        id: driver.id,
+        name: driver.name,
+        performance,
+        totalPaid,
+        initials: driver.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+        pic: driver.profilePictureUrl
+      };
+    }).sort((a, b) => b.performance - a.performance);
   }, [activeDrivers, payments, weeklyTarget]);
 
   const bikeStatusData = [
@@ -95,6 +111,51 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Fleet Leaderboard */}
+          <div className="bg-gray-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full"></div>
+            <div className="relative z-10">
+               <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-tight">Fleet Elite Leaderboard</h3>
+                    <p className="text-blue-400 text-[9px] font-black uppercase tracking-[0.3em] mt-1">Monthly Payment Performance Rank</p>
+                  </div>
+                  <span className="text-2xl">🏆</span>
+               </div>
+               
+               <div className="space-y-4">
+                  {leaderboardData.slice(0, 5).map((entry, index) => (
+                    <div key={entry.id} className="bg-white/5 border border-white/5 hover:bg-white/10 p-4 rounded-2xl flex items-center justify-between transition-all group">
+                       <div className="flex items-center space-x-4">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${index === 0 ? 'bg-amber-400 text-black' : index === 1 ? 'bg-gray-300 text-black' : index === 2 ? 'bg-orange-400 text-black' : 'bg-white/10 text-white/40'}`}>
+                            {index + 1}
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center font-black text-[10px] text-white/40 border border-white/10">
+                            {entry.pic ? <img src={entry.pic} className="w-full h-full object-cover" /> : entry.initials}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black uppercase tracking-tight group-hover:text-blue-400 transition-colors">{entry.name}</p>
+                            <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">R{entry.totalPaid.toLocaleString()} Settled</p>
+                          </div>
+                       </div>
+                       <div className="text-right">
+                          <p className={`text-lg font-black ${entry.performance >= 100 ? 'text-emerald-400' : entry.performance >= 80 ? 'text-blue-400' : 'text-red-400'}`}>
+                            {entry.performance}%
+                          </p>
+                          <div className="w-20 bg-white/5 h-1 rounded-full mt-1 overflow-hidden">
+                             <div className={`h-full ${entry.performance >= 100 ? 'bg-emerald-400' : entry.performance >= 80 ? 'bg-blue-400' : 'bg-red-400'}`} style={{ width: `${Math.min(100, entry.performance)}%` }}></div>
+                          </div>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+               
+               {leaderboardData.length > 5 && (
+                 <p className="text-center mt-6 text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Viewing Top 5 of {leaderboardData.length} Operators</p>
+               )}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -109,6 +170,19 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
                   <Legend verticalAlign="bottom" align="center" iconSize={8} formatter={(val) => <span className="text-[10px] font-black text-gray-400 uppercase ml-2">{val}</span>} />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-10 space-y-3 pt-6 border-t border-gray-50">
+               <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest text-center mb-4">Operational Status Alerts</p>
+               {bikes.filter(b => b.status === 'maintenance').slice(0, 3).map(b => (
+                 <div key={b.id} className="flex items-center space-x-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                    <span className="text-xs">🔧</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-black text-red-700 uppercase truncate">{b.licenseNumber}</p>
+                      <p className="text-[7px] font-bold text-red-400 uppercase">In Workshop</p>
+                    </div>
+                 </div>
+               ))}
             </div>
           </div>
         </div>

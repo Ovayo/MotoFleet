@@ -17,6 +17,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
   const [passcode, setPasscode] = useState('');
   const [fleetId, setFleetId] = useState('');
   const [fleetName, setFleetName] = useState('');
+  const [trustEnvironment, setTrustEnvironment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [registry, setRegistry] = useState<RegisteredFleet[]>(() => {
@@ -30,6 +31,9 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
 
     // Super Admin Backdoor
     if (passcode === 'superadmin2026') {
+      if (trustEnvironment) {
+        localStorage.setItem('mf_trusted_env', 'true');
+      }
       onSuperAdminLogin();
       return;
     }
@@ -46,6 +50,9 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
       setRegistry(newRegistry);
       localStorage.setItem('motofleet_master_registry', JSON.stringify(newRegistry));
       
+      if (trustEnvironment) {
+        localStorage.setItem('mf_trusted_env', 'true');
+      }
       onLogin(passcode, newFleet.id, newFleet.name);
     } else {
       const fleet = registry.find(f => f.id.toLowerCase() === fleetId.toLowerCase());
@@ -55,7 +62,13 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
       }
       
       const success = onLogin(passcode, fleet.id, fleet.name);
-      if (!success) {
+      if (success) {
+        if (trustEnvironment) {
+          localStorage.setItem('mf_trusted_env', 'true');
+        } else {
+          localStorage.removeItem('mf_trusted_env');
+        }
+      } else {
         setError("Invalid Passcode. Access Denied.");
         setPasscode('');
       }
@@ -141,6 +154,17 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onSuperAdminLogin, onS
                 }`}
                 required
               />
+            </div>
+
+            <div className="flex items-center space-x-3 px-1">
+              <input 
+                type="checkbox" 
+                id="trust-env"
+                className="w-4 h-4 rounded border-white/10 bg-black/30 text-blue-600 focus:ring-blue-500/20"
+                checked={trustEnvironment}
+                onChange={(e) => setTrustEnvironment(e.target.checked)}
+              />
+              <label htmlFor="trust-env" className="text-[9px] font-black text-gray-400 uppercase tracking-widest cursor-pointer">Trust this work environment (Skip login next time)</label>
             </div>
 
             {error && (

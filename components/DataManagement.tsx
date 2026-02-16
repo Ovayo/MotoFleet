@@ -34,6 +34,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
   const [sourceFleetId, setSourceFleetId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isTrusted = localStorage.getItem('mf_trusted_env') === 'true';
+
   const handleExport = () => {
     setIsExporting(true);
     const exportData = {
@@ -126,6 +128,15 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
       setters.setNotifications(recoveredPayload.notifications || []);
       setSyncMessage(`Local Sync Complete: Data migrated from ${sourceFleetId}.`);
     }
+  };
+
+  const toggleTrustedEnv = () => {
+    if (isTrusted) {
+      localStorage.removeItem('mf_trusted_env');
+    } else {
+      localStorage.setItem('mf_trusted_env', 'true');
+    }
+    window.location.reload();
   };
 
   return (
@@ -235,14 +246,24 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
         </div>
 
         <div className="flex flex-col justify-center space-y-4">
-           <div className="p-8 bg-amber-50 rounded-[2.5rem] border border-amber-100">
+           <div className={`p-8 rounded-[2.5rem] border transition-all ${isTrusted ? 'bg-blue-50 border-blue-100' : 'bg-amber-50 border-amber-100'}`}>
              <div className="flex items-start space-x-4">
-               <span className="text-2xl">⚡</span>
+               <span className="text-2xl">{isTrusted ? '🔒' : '🛡️'}</span>
                <div>
-                 <h4 className="text-amber-800 font-black uppercase text-xs tracking-tight mb-1">Portability Protocol</h4>
-                 <p className="text-amber-700/60 text-[9px] font-bold uppercase leading-relaxed">
-                   Syncing between "Live" and "Work" environments requires exporting a .mfcore file from the source and injecting it into the destination. Data remains local to your device unless manually transferred.
+                 <h4 className={`font-black uppercase text-xs tracking-tight mb-1 ${isTrusted ? 'text-blue-800' : 'text-amber-800'}`}>
+                   {isTrusted ? 'Trusted Work Environment Active' : 'Environment Trust Legacy'}
+                 </h4>
+                 <p className={`text-[9px] font-bold uppercase leading-relaxed mb-4 ${isTrusted ? 'text-blue-700/60' : 'text-amber-700/60'}`}>
+                   {isTrusted 
+                    ? 'This browser is configured to bypass login prompts for your administrative account.' 
+                    : 'Enable environment trust to bypass login screens on this specific device.'}
                  </p>
+                 <button 
+                  onClick={toggleTrustedEnv}
+                  className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm transition-all ${isTrusted ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                 >
+                   {isTrusted ? 'Revoke Trust' : 'Enable Trust (Auto-Login)'}
+                 </button>
                </div>
              </div>
            </div>
