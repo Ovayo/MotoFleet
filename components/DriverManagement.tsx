@@ -25,6 +25,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
   const [formData, setFormData] = useState<Omit<Driver, 'id'>>({
     name: '',
     contact: '',
+    passcode: '',
     nationality: '',
     address: '',
     idNumber: '',
@@ -270,6 +271,10 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 <input name="contact" value={formData.contact} onChange={handleInputChange} required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm" placeholder="072 123 4567" />
               </div>
               <div className="space-y-1">
+                <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest px-1">Hub Portal Passcode (PIN)</label>
+                <input name="passcode" value={formData.passcode} onChange={handleInputChange} required className="w-full border-blue-100 rounded-2xl p-4 bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-sm tracking-widest" placeholder="e.g. 1234" maxLength={8} />
+              </div>
+              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Rental Target (R / week)</label>
                 <input type="number" name="weeklyTarget" value={formData.weeklyTarget} onChange={handleInputChange} required className="w-full border-gray-100 rounded-2xl p-4 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-sm" placeholder="e.g. 650" />
               </div>
@@ -340,6 +345,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                 setFormData({
                   name: '',
                   contact: '',
+                  passcode: '',
                   nationality: '',
                   address: '',
                   idNumber: '',

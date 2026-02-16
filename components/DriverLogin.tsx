@@ -2,20 +2,22 @@
 import React, { useState } from 'react';
 
 interface DriverLoginProps {
-  onLogin: (contact: string) => boolean;
+  onLogin: (contact: string, passcode: string) => boolean;
   onSwitchRole?: (role: 'admin' | 'driver' | 'mechanic') => void;
 }
 
 const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
   const [contact, setContact] = useState('');
+  const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = onLogin(contact);
+    const success = onLogin(contact, passcode);
     if (!success) {
       setError(true);
-      setTimeout(() => setError(false), 2000);
+      setPasscode(''); // Clear passcode on fail
+      setTimeout(() => setError(false), 3000);
     }
   };
 
@@ -30,7 +32,7 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
             <span className="text-white text-3xl font-bold">MF</span>
           </div>
           <h1 className="text-3xl font-black text-gray-800 mb-2 tracking-tight uppercase">Driver Portal</h1>
-          <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">Access your portfolio using your terminal contact</p>
+          <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">Secure operator access module</p>
         </div>
 
         <div className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-emerald-900/5 border border-gray-100 relative">
@@ -55,21 +57,36 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-            <div>
-              <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1 text-center">Identity Verification</label>
-              <input
-                type="tel"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="071 234 5678"
-                className={`w-full text-center text-2xl font-black tracking-widest py-5 bg-gray-50 border-2 rounded-2xl outline-none transition-all ${
-                  error ? 'border-red-500 bg-red-50' : 'border-gray-50 focus:border-emerald-500 focus:bg-white'
-                }`}
-                required
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Identity Terminal (Mobile)</label>
+                <input
+                  type="tel"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  placeholder="071 234 5678"
+                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-emerald-500 focus:bg-white font-bold text-lg transition-all"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Access PIN / Passcode</label>
+                <input
+                  type="password"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  placeholder="••••"
+                  className={`w-full text-center text-2xl font-black tracking-[0.4em] py-5 bg-gray-50 border-2 rounded-2xl outline-none transition-all ${
+                    error ? 'border-red-500 bg-red-50' : 'border-gray-100 focus:border-emerald-500 focus:bg-white'
+                  }`}
+                  required
+                />
+              </div>
+
               {error && (
-                <p className="text-red-500 text-[10px] font-black text-center mt-3 uppercase tracking-widest animate-bounce">
-                  Terminal ID not found. Verify with Fleet Admin.
+                <p className="text-red-500 text-[10px] font-black text-center mt-3 uppercase tracking-widest animate-pulse">
+                  Invalid Credentials. Unauthorized access blocked.
                 </p>
               )}
             </div>
@@ -78,14 +95,14 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
               type="submit"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-200 transition-all transform active:scale-95 uppercase text-[10px] tracking-[0.2em]"
             >
-              Access My Hub
+              Verify & Launch Hub
             </button>
           </form>
         </div>
         
         <p className="text-center mt-8 text-gray-400 text-[9px] font-bold uppercase tracking-[0.2em]">
-          Secure Gateway Protocol v2.5<br/>
-          Integrated Cloud Logistics System
+          Secure Gateway Protocol v2.6<br/>
+          Operator Isolation Active
         </p>
       </div>
     </div>

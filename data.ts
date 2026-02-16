@@ -64,14 +64,14 @@ export const INITIAL_BIKES: Bike[] = [
 ];
 
 export const INITIAL_DRIVERS: Driver[] = [
-  { id: 'd1', name: 'Barton Nyalugwe', contact: '0718398532', nationality: 'Malawi', address: 'Joburg', idNumber: 'MWA309918', city: 'JHB', licenseExpiry: '2026-05-10', pdpExpiry: '2025-05-10', enatisVerified: true, contactVerified: true, weeklyTarget: 650, isArchived: false },
-  { id: 'd2', name: 'Kishani Alex', contact: '0817997139', nationality: 'Malawi', address: 'Joburg', idNumber: '6758843/2', city: 'JHB', licenseExpiry: '2025-12-01', pdpExpiry: '2025-12-01', enatisVerified: true, contactVerified: true, weeklyTarget: 650, isArchived: false },
-  { id: 'd3', name: 'Mutema Nassan', contact: '0694699361', nationality: 'DRC', address: 'Cape Town', idNumber: 'N/A', city: 'CTN', licenseExpiry: '2025-03-15', weeklyTarget: 600, isArchived: false },
-  { id: 'd4', name: 'Ngqaza Ncube', contact: '0688818095', nationality: 'Zim', address: 'Joburg', idNumber: '0688818095', city: 'JHB', licenseExpiry: '2025-08-20', pdpExpiry: '2025-02-15', weeklyTarget: 650, isArchived: false },
-  { id: 'd5', name: 'Shamusi Safali', contact: '076 175 0843', nationality: 'Malawi', address: 'Cape Town', idNumber: 'MB1111093', city: 'CTN', licenseExpiry: '2026-01-10', pdpExpiry: '2026-01-10', enatisVerified: true, contactVerified: true, weeklyTarget: 600, isArchived: false },
-  { id: 'd6', name: 'Asanda Mtebele', contact: '065 562 6701', nationality: 'SA', address: 'Southenwood', idNumber: '9405216136087', city: 'EL', licenseExpiry: '2027-09-22', pdpExpiry: '2025-09-22', enatisVerified: true, weeklyTarget: 600, isArchived: false },
-  { id: 'd7', name: 'Josefe Alex', contact: '063 223 9854', nationality: 'Malawi', address: 'Southenwood', idNumber: '5518845/2', city: 'EL', licenseExpiry: '2025-11-30', weeklyTarget: 650, isArchived: false },
-  { id: 'd8', name: 'Lico', contact: '078 708 0024', nationality: 'South African', address: 'N/A', idNumber: 'N/A', city: 'EL', licenseExpiry: '2025-04-12', weeklyTarget: 600, isArchived: false },
+  { id: 'd1', name: 'Barton Nyalugwe', contact: '0718398532', passcode: '1234', nationality: 'Malawi', address: 'Joburg', idNumber: 'MWA309918', city: 'JHB', licenseExpiry: '2026-05-10', pdpExpiry: '2025-05-10', enatisVerified: true, contactVerified: true, weeklyTarget: 650, isArchived: false },
+  { id: 'd2', name: 'Kishani Alex', contact: '0817997139', passcode: '1234', nationality: 'Malawi', address: 'Joburg', idNumber: '6758843/2', city: 'JHB', licenseExpiry: '2025-12-01', pdpExpiry: '2025-12-01', enatisVerified: true, contactVerified: true, weeklyTarget: 650, isArchived: false },
+  { id: 'd3', name: 'Mutema Nassan', contact: '0694699361', passcode: '1234', nationality: 'DRC', address: 'Cape Town', idNumber: 'N/A', city: 'CTN', licenseExpiry: '2025-03-15', weeklyTarget: 600, isArchived: false },
+  { id: 'd4', name: 'Ngqaza Ncube', contact: '0688818095', passcode: '1234', nationality: 'Zim', address: 'Joburg', idNumber: '0688818095', city: 'JHB', licenseExpiry: '2025-08-20', pdpExpiry: '2025-02-15', weeklyTarget: 650, isArchived: false },
+  { id: 'd5', name: 'Shamusi Safali', contact: '076 175 0843', passcode: '1234', nationality: 'Malawi', address: 'Cape Town', idNumber: 'MB1111093', city: 'CTN', licenseExpiry: '2026-01-10', pdpExpiry: '2026-01-10', enatisVerified: true, contactVerified: true, weeklyTarget: 600, isArchived: false },
+  { id: 'd6', name: 'Asanda Mtebele', contact: '065 562 6701', passcode: '1234', nationality: 'SA', address: 'Southenwood', idNumber: '9405216136087', city: 'EL', licenseExpiry: '2027-09-22', pdpExpiry: '2025-09-22', enatisVerified: true, weeklyTarget: 600, isArchived: false },
+  { id: 'd7', name: 'Josefe Alex', contact: '063 223 9854', passcode: '1234', nationality: 'Malawi', address: 'Southenwood', idNumber: '5518845/2', city: 'EL', licenseExpiry: '2025-11-30', weeklyTarget: 650, isArchived: false },
+  { id: 'd8', name: 'Lico', contact: '078 708 0024', passcode: '1234', nationality: 'South African', address: 'N/A', idNumber: 'N/A', city: 'EL', licenseExpiry: '2025-04-12', weeklyTarget: 600, isArchived: false },
 ];
 
 export const INITIAL_PAYMENTS: Payment[] = [

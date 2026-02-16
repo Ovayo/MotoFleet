@@ -29,6 +29,7 @@ export interface Driver {
   id: string;
   name: string;
   contact: string;
+  passcode?: string; // Secure portal access key
   nationality: string;
   address: string;
   idNumber: string;
