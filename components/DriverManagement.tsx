@@ -11,9 +11,10 @@ interface DriverManagementProps {
   onAddFine: (fine: Omit<TrafficFine, 'id'>) => void;
   weeklyTarget: number;
   onAdminViewHub: (driver: Driver) => void;
+  onDeleteDriver: (id: string) => void;
 }
 
-const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, fines, onAddFine, weeklyTarget, onAdminViewHub }) => {
+const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers, bikes, payments, fines, onAddFine, weeklyTarget, onAdminViewHub, onDeleteDriver }) => {
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
@@ -452,6 +453,13 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
                     title={driver.isArchived ? "Restore Profile" : "Archive Operator"}
                   >
                     {driver.isArchived ? '📤' : '📥'}
+                  </button>
+                  <button 
+                    onClick={() => onDeleteDriver(driver.id)}
+                    className="w-11 h-11 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                    title="Permanently Delete Operator"
+                  >
+                    🗑️
                   </button>
                 </div>
               </div>

@@ -219,6 +219,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteDriver = (id: string) => {
+    const driver = drivers.find(d => d.id === id);
+    if (!driver) return;
+    
+    if (window.confirm(`PERMANENT ACTION: Are you sure you want to delete ${driver.name}? All linked bike assignments will be cleared. History in ledgers will remain for accounting.`)) {
+      setDrivers(prev => prev.filter(d => d.id !== id));
+      setBikes(prev => prev.map(b => b.assignedDriverId === id ? { ...b, assignedDriverId: undefined, status: 'idle' as const } : b));
+      
+      if (loggedDriver?.id === id) {
+        setLoggedDriver(null);
+        if (role === 'driver') {
+          setRole('admin');
+          setView('dashboard');
+        }
+      }
+    }
+  };
+
   const handleAdminViewDriverHub = (driver: Driver) => {
     setIsTransitioning(true);
     setTimeout(() => {
@@ -390,7 +408,7 @@ const App: React.FC = () => {
       case 'fleet':
         return <FleetManagement bikes={bikes} setBikes={setBikes} drivers={drivers} maintenance={maintenance} payments={payments} weeklyTarget={WEEKLY_TARGET} workshops={workshops} onAdminViewHub={handleAdminViewDriverHub} />;
       case 'drivers':
-        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} onAdminViewHub={handleAdminViewDriverHub} />;
+        return <DriverManagement drivers={drivers} setDrivers={setDrivers} bikes={bikes} payments={payments} fines={fines} onAddFine={handleAddFine} weeklyTarget={WEEKLY_TARGET} onAdminViewHub={handleAdminViewDriverHub} onDeleteDriver={handleDeleteDriver} />;
       case 'payments':
         return <PaymentTracking drivers={drivers} payments={payments} onAddPayment={handleAddPayment} onUpdatePayment={handleUpdatePayment} onDeletePayment={handleDeletePayment} onUpdateDriver={handleUpdateDriver} weeklyTarget={WEEKLY_TARGET} />;
       case 'maintenance':
