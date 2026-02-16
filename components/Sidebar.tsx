@@ -39,6 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const adminGroups: MenuGroup[] = [
     ...(isSuperAdmin ? [{ id: 'g-master', label: 'Master', icon: '👑', viewId: 'super-admin' as View }] : []),
+    { id: 'g-singularity', label: 'Singularity', icon: '🌀', viewId: 'singularity' as View },
     { id: 'g-hub', label: 'Hub', icon: '📊', viewId: 'dashboard' },
     { 
       id: 'g-assets', 
@@ -146,7 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={group.id}
                 onClick={() => handleGroupClick(group)}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative z-10 ${isActive || isOpen ? textActiveMap[themeColor] : 'text-gray-400'}`}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative z-10 ${isActive || isOpen ? textActiveMap[themeColor] : 'text-gray-400'} ${group.id === 'g-singularity' ? 'animate-pulse' : ''}`}
               >
                 <div className={`relative transition-all duration-300 ${isOpen || isActive ? 'scale-110 -translate-y-1' : 'scale-100 opacity-60'}`}>
                    <span className="text-2xl mb-0.5">{group.icon}</span>
@@ -197,6 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <nav className="space-y-1.5 flex-1 overflow-y-auto pr-2 no-scrollbar">
             {(role === 'admin' ? [
               ...(isSuperAdmin ? [{ id: 'super-admin', label: 'Provisioning', icon: '👑' }] : []),
+              { id: 'singularity', label: 'Singularity', icon: '🌀' },
               { id: 'dashboard', label: 'Overview', icon: '📊' },
               { id: 'fleet', label: 'Fleet', icon: '🏍️' },
               { id: 'drivers', label: 'Operators', icon: '👤' },
@@ -217,9 +219,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setView(item.id as View)}
                 className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all ${
                   activeView === item.id ? `${colorMap[themeColor]} text-white font-bold translate-x-1 shadow-lg shadow-gray-100` : 'text-gray-500 hover:bg-gray-50'
-                }`}
+                } ${item.id === 'singularity' ? 'hover:bg-indigo-50 border-l-4 border-transparent hover:border-indigo-500' : ''}`}
               >
-                <span className="text-xl opacity-80">{item.icon}</span>
+                <span className={`text-xl opacity-80 ${item.id === 'singularity' ? 'animate-spin-slow' : ''}`}>{item.icon}</span>
                 <span className="text-sm font-bold uppercase tracking-wider text-[11px]">{item.label}</span>
               </button>
             ))}
@@ -237,6 +239,16 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
       </aside>
+
+      <style>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 10s linear infinite;
+        }
+      `}</style>
     </>
   );
 };
