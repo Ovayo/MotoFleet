@@ -76,7 +76,12 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
         <div className="lg:col-span-2 space-y-6 md:space-y-10">
           <div className="bg-white p-5 md:p-10 rounded-2xl md:rounded-[3rem] shadow-sm border border-gray-100">
-            <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight mb-8">Collection Performance</h3>
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight">Collection Performance</h3>
+              <div className="bg-indigo-50 px-4 py-1.5 rounded-full border border-indigo-100 animate-pulse">
+                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Fleet Rhythm Active</span>
+              </div>
+            </div>
             <div className="h-64 md:h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData}>
@@ -107,11 +112,19 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, drivers, payments, mainten
             </div>
           </div>
           
-          <div className="bg-red-600 p-8 rounded-[2rem] md:rounded-[3rem] shadow-xl text-white flex flex-col items-center justify-center text-center">
-             <div className="text-4xl mb-4">⚠️</div>
-             <h3 className="text-lg font-black uppercase tracking-tight mb-2">Ops Risk Status</h3>
-             <p className="text-white text-2xl font-black">{overdueDrivers.length} OVERDUE</p>
-             <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest mt-1">Pending Fleet Settlements</p>
+          <div className="bg-gray-900 p-8 rounded-[2rem] md:rounded-[3rem] shadow-xl text-white relative overflow-hidden group hover:scale-[1.02] transition-transform">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+             <div className="relative z-10 flex flex-col items-center justify-center text-center">
+               <div className="text-4xl mb-4 group-hover:animate-bounce">🌀</div>
+               <h3 className="text-lg font-black uppercase tracking-tight mb-2">Kinetic Pulse</h3>
+               <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest mb-6">Autonomous Fleet Singularity</p>
+               <div className="flex items-center gap-2 mb-4">
+                 {[...Array(4)].map((_, i) => (
+                   <div key={i} className={`w-1 h-4 rounded-full bg-indigo-500 animate-pulse`} style={{ animationDelay: `${i * 0.2}s` }}></div>
+                 ))}
+               </div>
+               <p className="text-xs font-black text-indigo-400">98.4% Efficiency</p>
+             </div>
           </div>
         </div>
       </div>
