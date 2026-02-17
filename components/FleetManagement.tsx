@@ -21,26 +21,36 @@ const MiniCostChart = ({ bikeId, maintenance }: { bikeId: string, maintenance: M
     const records = maintenance
       .filter(m => m.bikeId === bikeId)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-7);
+      .slice(-10); // Show last 10 for better trend line
 
     if (records.length === 0) return [{ cost: 0 }];
     return records.map((r, i) => ({ id: i, cost: r.cost }));
   }, [bikeId, maintenance]);
 
   if (data.length === 1 && data[0].cost === 0) {
-    return <div className="text-[7px] text-gray-300 font-black uppercase tracking-tighter bg-gray-50 px-2 py-1 rounded">No Data</div>;
+    return <div className="text-[7px] text-gray-300 font-black uppercase tracking-tighter bg-gray-50 px-2 py-1 rounded">No History</div>;
   }
 
   return (
-    <div className="h-7 w-16 md:w-20 bg-gray-50/50 rounded-lg p-1 border border-gray-100/50">
+    <div className="h-8 w-20 md:w-24 bg-gray-50/50 rounded-lg p-0.5 border border-gray-100/50 group/chart relative overflow-hidden transition-all hover:bg-white hover:border-blue-100">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <Bar dataKey="cost" radius={[1, 1, 0, 0]}>
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={index === data.length - 1 ? '#EF4444' : '#94A3B8'} />
-            ))}
-          </Bar>
-        </BarChart>
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={`grad-${bikeId}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <Area 
+            type="monotone" 
+            dataKey="cost" 
+            stroke="#3B82F6" 
+            strokeWidth={1.5}
+            fillOpacity={1} 
+            fill={`url(#grad-${bikeId})`} 
+            animationDuration={1000}
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
@@ -133,7 +143,6 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
       return matchesSearch && matchesTab;
     });
 
-    // Apply Sorting
     result.sort((a, b) => {
       if (sortBy === 'license') {
         return a.licenseNumber.localeCompare(b.licenseNumber);
@@ -393,9 +402,9 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2 items-center">
-                  <div className="flex flex-col items-center flex-1 pr-2">
-                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Expense History</p>
+                <div className="flex gap-2 pt-2 items-center justify-between">
+                  <div className="flex flex-col items-start pr-2">
+                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Expense Trend</p>
                     <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
                   </div>
                   <div className="flex gap-2 items-center shrink-0">
@@ -511,29 +520,31 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
                     <td className="px-8 py-6 text-right">
                       <div className="flex items-center justify-end space-x-6">
                         <div className="flex flex-col items-end shrink-0">
-                          <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1">Expense Trend</p>
-                          <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
-                        </div>
-                        <div className="flex items-center justify-end space-x-2 shrink-0">
-                          {driver && (
-                            <button 
-                              onClick={() => onAdminViewHub?.(driver)}
-                              className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-colors" 
-                              title="Enter Driver Hub (Spectator)"
-                            >
-                              👤
-                            </button>
-                          )}
-                          <button 
-                            onClick={() => setAssigningBikeId(bike.id)} 
-                            className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors" 
-                            title="Assign Driver"
-                          >
-                            👤+
-                          </button>
-                          <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
-                          <button onClick={() => setHistoryBikeId(bike.id)} className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-gray-50 flex items-center justify-center" title="Full Maintenance Log">📜</button>
-                          <button onClick={() => handleDeleteBike(bike.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-xl">🗑️</button>
+                          <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1.5">Expense History</p>
+                          <div className="flex items-center space-x-4">
+                            <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
+                            <div className="flex items-center justify-end space-x-2 shrink-0">
+                              {driver && (
+                                <button 
+                                  onClick={() => onAdminViewHub?.(driver)}
+                                  className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-xl transition-colors" 
+                                  title="Enter Driver Hub (Spectator)"
+                                >
+                                  👤
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => setAssigningBikeId(bike.id)} 
+                                className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors" 
+                                title="Assign Driver"
+                              >
+                                👤+
+                              </button>
+                              <button onClick={() => setEditingBikeId(bike.id)} className="p-2 hover:bg-gray-100 rounded-xl" title="Edit Asset">✏️</button>
+                              <button onClick={() => setHistoryBikeId(bike.id)} className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-gray-50 flex items-center justify-center" title="Full Maintenance Log">📜</button>
+                              <button onClick={() => handleDeleteBike(bike.id)} className="p-2 hover:bg-red-50 text-red-500 rounded-xl">🗑️</button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </td>

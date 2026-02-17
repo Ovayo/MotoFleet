@@ -476,7 +476,7 @@ const App: React.FC = () => {
         />
       )}
       
-      <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8' : ''}`}>
+      <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-32 md:pb-8' : ''}`}>
         {showSidebar && (
           <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center p-4 md:p-5 rounded-2xl md:rounded-[2rem] border sticky top-4 z-20 shadow-sm gap-3 transition-all bg-white/70 backdrop-blur-md border-gray-100">
             <div className="flex-1 min-w-0 text-left">
