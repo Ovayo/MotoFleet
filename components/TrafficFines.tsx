@@ -35,7 +35,6 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
     attachmentUrl: ''
   });
 
-  // Intelligent Association: Driver -> Bike
   const handleDriverChange = (driverId: string) => {
     const assignedBike = bikes.find(b => b.assignedDriverId === driverId);
     setNewFine(prev => ({
@@ -45,7 +44,6 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
     }));
   };
 
-  // Intelligent Association: Bike -> Driver
   const handleBikeChange = (bikeId: string) => {
     const bike = bikes.find(b => b.id === bikeId);
     setNewFine(prev => ({
@@ -121,51 +119,100 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
     return [];
   }, [fines, groupingMode]);
 
-  const FineRow: React.FC<{ fine: TrafficFine }> = ({ fine }) => {
+  const FineAccordionRow: React.FC<{ fine: TrafficFine }> = ({ fine }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const bike = bikes.find(b => b.id === fine.bikeId);
     const driver = drivers.find(d => d.id === fine.driverId);
+
     return (
-      <div className="flex flex-col md:flex-row items-center justify-between p-5 bg-white rounded-2xl border border-gray-50 hover:border-gray-200 transition-all gap-4 group/row">
-        <div className="flex items-center space-x-4 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center text-lg shrink-0 group-hover/row:bg-red-50 group-hover/row:text-red-500 transition-colors">
-            🚔
+      <div className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-red-100 shadow-md ring-1 ring-red-50' : 'border-gray-50 hover:border-gray-200'}`}>
+        <div 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex flex-col md:flex-row items-center justify-between p-4 cursor-pointer gap-4"
+        >
+          <div className="flex items-center space-x-4 flex-1 min-w-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 transition-colors ${isExpanded ? 'bg-red-500 text-white' : 'bg-gray-50 text-gray-400'}`}>
+              🚔
+            </div>
+            <div className="min-w-0">
+              <h5 className="text-sm font-black text-gray-800 uppercase tracking-tight truncate">
+                {fine.noticeNumber} <span className="text-gray-300 mx-1">|</span> R{fine.amount.toLocaleString()}
+              </h5>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 truncate">
+                {driver?.name || 'Unknown'} • {bike?.licenseNumber || 'N/A'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h5 className="text-sm font-black text-gray-800 uppercase tracking-tight truncate">
-              {fine.noticeNumber} <span className="text-gray-300 mx-2">|</span> R{fine.amount}
-            </h5>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 truncate">
-              {driver?.name || 'Unknown'} • {bike?.licenseNumber || 'N/A'} • {new Date(fine.date).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4 w-full md:w-auto shrink-0">
-          <p className="hidden lg:block text-[10px] text-gray-400 font-medium max-w-[200px] truncate italic">"{fine.description}"</p>
-          <div className="flex items-center space-x-3">
-            {fine.attachmentUrl && (
-              <button 
-                onClick={() => setViewingAttachment(fine.attachmentUrl!)}
-                className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
-                title="View Notice Copy"
-              >
-                📄
-              </button>
-            )}
-            <select 
-              value={fine.status} 
-              onChange={(e) => onUpdateStatus(fine.id, e.target.value as any)}
-              className={`border-none rounded-xl px-4 py-2 text-[9px] font-black uppercase tracking-widest outline-none cursor-pointer transition-colors ${
-                fine.status === 'unpaid' ? 'bg-red-50 text-red-600' : 
-                fine.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
-              }`}
-            >
-              <option value="unpaid">Unpaid</option>
-              <option value="paid">Paid</option>
-              <option value="contested">Contested</option>
-            </select>
+          
+          <div className="flex items-center space-x-4 w-full md:w-auto justify-between md:justify-end">
+            <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+              fine.status === 'unpaid' ? 'bg-red-50 text-red-600' : 
+              fine.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+            }`}>
+              {fine.status}
+            </div>
+            <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+              <span className="text-gray-300 text-xs">▼</span>
+            </div>
           </div>
         </div>
+
+        {isExpanded && (
+          <div className="px-5 pb-5 pt-2 border-t border-gray-50 bg-gray-50/30 animate-in slide-in-from-top-2 duration-300">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Violation Narrative</p>
+                  <p className="text-xs font-bold text-gray-700 italic">"{fine.description || 'No detailed description provided.'}"</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Incident Date</p>
+                      <p className="text-[10px] font-black text-gray-800">{new Date(fine.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                   </div>
+                   <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Liability Amount</p>
+                      <p className="text-[10px] font-black text-red-600">R{fine.amount.toLocaleString()}</p>
+                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Administrative Actions</p>
+                  <div className="flex gap-2">
+                    <select 
+                      value={fine.status} 
+                      onChange={(e) => onUpdateStatus(fine.id, e.target.value as any)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 bg-white border border-gray-100 rounded-xl px-3 py-2 text-[9px] font-black uppercase outline-none shadow-sm cursor-pointer"
+                    >
+                      <option value="unpaid">Mark Unpaid</option>
+                      <option value="paid">Mark Paid</option>
+                      <option value="contested">Mark Contested</option>
+                    </select>
+                    {fine.attachmentUrl && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setViewingAttachment(fine.attachmentUrl!); }}
+                        className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                        title="View Notice Copy"
+                      >
+                        📄
+                      </button>
+                    )}
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${driver?.contact.replace(/\s+/g, '')}`, '_blank'); }}
+                    className="w-full bg-gray-900 text-white py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-black transition-all flex items-center justify-center space-x-2"
+                  >
+                    <span>💬</span>
+                    <span>Nudge Operator</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -179,7 +226,6 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
 
   return (
     <div className="space-y-8 pb-10 max-w-6xl mx-auto">
-      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
            <div>
@@ -204,7 +250,6 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
         </div>
       </div>
 
-      {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Active Infringements</h2>
@@ -235,7 +280,6 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
         </div>
       </div>
 
-      {/* Entry Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[3rem] shadow-2xl max-w-2xl w-full space-y-8 animate-in zoom-in duration-200">
@@ -244,7 +288,7 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
                    <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Notice Submission</h3>
                    <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mt-1">Official Traffic Infringement Record</p>
                 </div>
-                <button type="button" onClick={() => setShowForm(false)} className="text-gray-300 hover:text-gray-600 text-5xl leading-none">&times;</button>
+                <button type="button" onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-5xl leading-none">&times;</button>
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -424,7 +468,7 @@ const TrafficFines: React.FC<TrafficFinesProps> = ({ bikes, drivers, fines, onAd
                   ) : (
                     groupFines
                       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map(fine => <FineRow key={fine.id} fine={fine} />)
+                      .map(fine => <FineAccordionRow key={fine.id} fine={fine} />)
                   )}
                 </div>
               )}

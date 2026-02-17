@@ -21,36 +21,34 @@ const MiniCostChart = ({ bikeId, maintenance }: { bikeId: string, maintenance: M
     const records = maintenance
       .filter(m => m.bikeId === bikeId)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-10); // Show last 10 for better trend line
+      .slice(-8); // Show last 8 records as discrete bars
 
-    if (records.length === 0) return [{ cost: 0 }];
-    return records.map((r, i) => ({ id: i, cost: r.cost }));
+    if (records.length === 0) return [];
+    return records.map((r, i) => ({ 
+      id: i, 
+      cost: r.cost,
+      type: r.serviceType 
+    }));
   }, [bikeId, maintenance]);
 
-  if (data.length === 1 && data[0].cost === 0) {
+  if (data.length === 0) {
     return <div className="text-[7px] text-gray-300 font-black uppercase tracking-tighter bg-gray-50 px-2 py-1 rounded">No History</div>;
   }
 
   return (
-    <div className="h-8 w-20 md:w-24 bg-gray-50/50 rounded-lg p-0.5 border border-gray-100/50 group/chart relative overflow-hidden transition-all hover:bg-white hover:border-blue-100">
+    <div className="h-8 w-20 md:w-24 bg-gray-50/50 rounded-lg p-1 border border-gray-100/50 transition-all hover:bg-white hover:border-blue-100 group/spark">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={`grad-${bikeId}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <Area 
-            type="monotone" 
-            dataKey="cost" 
-            stroke="#3B82F6" 
-            strokeWidth={1.5}
-            fillOpacity={1} 
-            fill={`url(#grad-${bikeId})`} 
-            animationDuration={1000}
-          />
-        </AreaChart>
+        <BarChart data={data}>
+          <Bar dataKey="cost" radius={[1.5, 1.5, 0, 0]}>
+            {data.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={index === data.length - 1 ? '#3B82F6' : '#CBD5E1'} 
+                className="transition-all duration-300 group-hover/spark:opacity-80"
+              />
+            ))}
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
@@ -404,7 +402,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
 
                 <div className="flex gap-2 pt-2 items-center justify-between">
                   <div className="flex flex-col items-start pr-2">
-                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Expense Trend</p>
+                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Expense History</p>
                     <MiniCostChart bikeId={bike.id} maintenance={maintenance} />
                   </div>
                   <div className="flex gap-2 items-center shrink-0">
