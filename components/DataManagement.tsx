@@ -32,6 +32,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
   const [isImporting, setIsImporting] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [sourceFleetId, setSourceFleetId] = useState('');
+  const [showMagicLink, setShowMagicLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isTrusted = localStorage.getItem('mf_trusted_env') === 'true';
@@ -139,8 +140,16 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
     window.location.reload();
   };
 
+  const generateMagicLink = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const magicUrl = `${baseUrl}?access_key=MF-WORK-ENV-2026`;
+    navigator.clipboard.writeText(magicUrl);
+    setShowMagicLink(true);
+    setTimeout(() => setShowMagicLink(false), 5000);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700">
+    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700 pb-12">
       <div className="bg-gray-900 rounded-[3rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5">
         <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none">
           <span className="text-9xl">📡</span>
@@ -218,54 +227,66 @@ const DataManagement: React.FC<DataManagementProps> = ({ fleetId, fleetName, dat
           )}
         </div>
 
-        {/* Matrix Visuals */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-emerald-500 to-indigo-600 animate-pulse"></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-6">
-        <div className="space-y-4">
-           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Terminal Registry Stats</h4>
-           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-              <div className="flex justify-between items-center text-[11px] font-bold text-gray-400 uppercase">
-                <span>Total Assets</span>
-                <span className="text-gray-800 font-black">{data.bikes.length}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px] font-bold text-gray-400 uppercase">
-                <span>Active Operators</span>
-                <span className="text-gray-800 font-black">{data.drivers.length}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px] font-bold text-gray-400 uppercase">
-                <span>Ledger Entries</span>
-                <span className="text-gray-800 font-black">{data.payments.length}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px] font-bold text-gray-400 uppercase pt-4 border-t border-gray-50">
-                <span>Workspace ID</span>
-                <span className="text-blue-600 font-black uppercase">{fleetId}</span>
-              </div>
+        <div className="space-y-6">
+           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Authorized Terminals</h4>
+           <div className={`p-8 rounded-[2.5rem] border transition-all ${isTrusted ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-100 border-gray-200'}`}>
+             <div className="flex items-start space-x-5">
+               <span className="text-3xl">{isTrusted ? '🖥️' : '🔒'}</span>
+               <div>
+                 <h4 className={`font-black uppercase text-xs tracking-tight mb-1 ${isTrusted ? 'text-emerald-800' : 'text-gray-800'}`}>
+                   {isTrusted ? 'Recognized Work Environment' : 'Secure Admin Device'}
+                 </h4>
+                 <p className={`text-[9px] font-bold uppercase leading-relaxed mb-6 ${isTrusted ? 'text-emerald-700/60' : 'text-gray-500'}`}>
+                   {isTrusted 
+                    ? 'This browser is identified as a trusted work terminal. Passcode login is bypassed.' 
+                    : 'Provision this device to bypass login prompts on your next visit.'}
+                 </p>
+                 <div className="flex flex-wrap gap-2">
+                   <button 
+                    onClick={toggleTrustedEnv}
+                    className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm transition-all ${isTrusted ? 'bg-white text-red-600 hover:bg-red-50' : 'bg-gray-900 text-white hover:bg-black'}`}
+                   >
+                     {isTrusted ? 'Revoke Device Certificate' : 'Authorize This Device'}
+                   </button>
+                   
+                   <button 
+                    onClick={generateMagicLink}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-700 transition-all flex items-center"
+                   >
+                     {showMagicLink ? '✅ Link Copied' : '🔗 Magic Access Link'}
+                   </button>
+                 </div>
+                 {showMagicLink && (
+                   <p className="mt-4 text-[8px] font-black text-blue-600 uppercase tracking-widest animate-pulse">Magic access link copied to clipboard. Use it once on your work PC to authorize it.</p>
+                 )}
+               </div>
+             </div>
            </div>
         </div>
 
-        <div className="flex flex-col justify-center space-y-4">
-           <div className={`p-8 rounded-[2.5rem] border transition-all ${isTrusted ? 'bg-blue-50 border-blue-100' : 'bg-amber-50 border-amber-100'}`}>
-             <div className="flex items-start space-x-4">
-               <span className="text-2xl">{isTrusted ? '🔒' : '🛡️'}</span>
-               <div>
-                 <h4 className={`font-black uppercase text-xs tracking-tight mb-1 ${isTrusted ? 'text-blue-800' : 'text-amber-800'}`}>
-                   {isTrusted ? 'Trusted Work Environment Active' : 'Environment Trust Legacy'}
-                 </h4>
-                 <p className={`text-[9px] font-bold uppercase leading-relaxed mb-4 ${isTrusted ? 'text-blue-700/60' : 'text-amber-700/60'}`}>
-                   {isTrusted 
-                    ? 'This browser is configured to bypass login prompts for your administrative account.' 
-                    : 'Enable environment trust to bypass login screens on this specific device.'}
-                 </p>
-                 <button 
-                  onClick={toggleTrustedEnv}
-                  className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm transition-all ${isTrusted ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                 >
-                   {isTrusted ? 'Revoke Trust' : 'Enable Trust (Auto-Login)'}
-                 </button>
-               </div>
-             </div>
+        <div className="space-y-6">
+           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Terminal Registry Stats</h4>
+           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5">
+              <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span>Total Assets</span>
+                <span className="text-gray-800 font-black">{data.bikes.length} Units</span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span>Active Operators</span>
+                <span className="text-gray-800 font-black">{data.drivers.length} personnel</span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span>Ledger Entries</span>
+                <span className="text-gray-800 font-black">{data.payments.length} transactions</span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase pt-4 border-t border-gray-50 tracking-widest">
+                <span>Workspace Identity</span>
+                <span className="text-blue-600 font-black uppercase">{fleetId}</span>
+              </div>
            </div>
         </div>
       </div>

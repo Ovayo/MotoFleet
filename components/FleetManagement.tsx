@@ -71,6 +71,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
   });
 
   const [editBikeData, setEditBikeData] = useState<Bike | null>(null);
+  const [vinError, setVinError] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingBikeId) {
@@ -81,6 +82,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
     } else {
       setEditBikeData(null);
     }
+    setVinError(null);
   }, [editingBikeId, bikes]);
 
   const fleetStats = useMemo(() => {
@@ -195,15 +197,38 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
 
   const handleAddBike = (e: React.FormEvent) => {
     e.preventDefault();
+    const isVinDuplicate = bikes.some(b => b.vin.toLowerCase() === newBike.vin.toLowerCase());
+    if (isVinDuplicate) {
+      setVinError("This VIN is already registered to another asset.");
+      return;
+    }
     setBikes(prev => [...prev, { ...newBike, id: `b-${Date.now()}`, status: 'idle', enatisVerified: false }]);
     setShowAddForm(false);
+    setNewBike({
+      makeModel: '',
+      licenseNumber: '',
+      vin: '',
+      year: '',
+      dealer: '',
+      price: '',
+      city: 'JHB',
+      notes: '',
+      licenseDiskExpiry: ''
+    });
+    setVinError(null);
   };
 
   const handleSaveEditBike = (e: React.FormEvent) => {
     e.preventDefault();
     if (editBikeData) {
+      const isVinDuplicate = bikes.some(b => b.id !== editBikeData.id && b.vin.toLowerCase() === editBikeData.vin.toLowerCase());
+      if (isVinDuplicate) {
+        setVinError("This VIN is already registered to another asset.");
+        return;
+      }
       setBikes(prev => prev.map(bike => bike.id === editBikeData.id ? editBikeData : bike));
       setEditingBikeId(null);
+      setVinError(null);
     }
   };
 
@@ -271,7 +296,7 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               <option value="make">Sort: Make/Model</option>
             </select>
             <button 
-              onClick={() => setShowAddForm(true)}
+              onClick={() => { setShowAddForm(true); setVinError(null); }}
               className="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-xl md:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100"
             >
               + Register Asset
@@ -538,7 +563,8 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">VIN / Chassis Number</label>
-                <input required className="w-full border-gray-100 rounded-xl p-4 bg-gray-50 text-sm font-bold" placeholder="VIN" value={newBike.vin} onChange={e => setNewBike({...newBike, vin: e.target.value})} />
+                <input required className={`w-full border-gray-100 rounded-xl p-4 bg-gray-50 text-sm font-bold ${vinError ? 'ring-2 ring-red-500' : ''}`} placeholder="VIN" value={newBike.vin} onChange={e => {setNewBike({...newBike, vin: e.target.value}); setVinError(null);}} />
+                {vinError && <p className="text-[8px] font-black text-red-500 uppercase tracking-widest mt-1 ml-1 animate-pulse">{vinError}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Year</label>
@@ -591,7 +617,8 @@ const FleetManagement: React.FC<FleetManagementProps> = ({ bikes, setBikes, driv
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">VIN / Chassis Number</label>
-                <input required className="w-full border-gray-100 rounded-xl p-4 bg-gray-50 text-sm font-bold" placeholder="VIN" value={editBikeData.vin} onChange={e => setEditBikeData({...editBikeData, vin: e.target.value})} />
+                <input required className={`w-full border-gray-100 rounded-xl p-4 bg-gray-50 text-sm font-bold ${vinError ? 'ring-2 ring-red-500' : ''}`} placeholder="VIN" value={editBikeData.vin} onChange={e => {setEditBikeData({...editBikeData, vin: e.target.value}); setVinError(null);}} />
+                {vinError && <p className="text-[8px] font-black text-red-500 uppercase tracking-widest mt-1 ml-1 animate-pulse">{vinError}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Year</label>

@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const params = new URLSearchParams(window.location.search);
   const isDedicatedDriverMode = params.get('portal') === 'driver';
   const isDedicatedMechanicMode = params.get('portal') === 'mechanic';
+  const magicKey = params.get('access_key');
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     const isTrusted = localStorage.getItem('mf_trusted_env') === 'true';
@@ -75,6 +76,22 @@ const App: React.FC = () => {
   const [accidents, setAccidents] = useState<AccidentReport[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [notifications, setNotifications] = useState<AutomatedNotification[]>([]);
+
+  // Defined activeDriver globally in the component to avoid Scope issues in the header and renderView
+  const activeDriver = useMemo(() => {
+    return loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
+  }, [loggedDriver, isAdminAuthenticated, drivers]);
+
+  // Magic Access Key Recognition for "Work Environment"
+  useEffect(() => {
+    if (magicKey === 'MF-WORK-ENV-2026') {
+      localStorage.setItem('mf_trusted_env', 'true');
+      localStorage.setItem('active_fleet_id', 'fleet_001');
+      localStorage.setItem('motofleet_admin_auth_v1', 'true');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setIsAdminAuthenticated(true);
+    }
+  }, [magicKey]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -347,7 +364,6 @@ const App: React.FC = () => {
       if (newRole === 'admin') setView('dashboard');
       if (newRole === 'mechanic') setView('mechanic-portal');
       if (newRole === 'driver') {
-        // If switching to driver as admin, ensure we have a driver to show
         if (!loggedDriver && drivers.length > 0) {
           setLoggedDriver(drivers[0]);
         }
@@ -382,9 +398,7 @@ const App: React.FC = () => {
     }
 
     if (role === 'driver') {
-      // Logic Fix: If Admin is logged in, always show a driver hub, defaulting to first if none picked
-      const activeDriver = loggedDriver || (isAdminAuthenticated && drivers.length > 0 ? drivers[0] : null);
-      
+      // Use component-scoped activeDriver instead of local definition
       if (activeDriver) {
         return (
           <DriverProfile 
@@ -401,13 +415,12 @@ const App: React.FC = () => {
             workshops={workshops}
             weeklyTarget={WEEKLY_TARGET}
             isAdminViewing={isAdminAuthenticated}
-            allDrivers={drivers} // Pass for quick switch
-            onAdminSwitchDriver={(d) => setLoggedDriver(d)} // Pass for quick switch
+            allDrivers={drivers}
+            onAdminSwitchDriver={(d) => setLoggedDriver(d)}
           />
         );
       }
       
-      // Only show login if NOT an admin
       if (!isAdminAuthenticated) return <DriverLogin onLogin={handleDriverLogin} onSwitchRole={switchPortalRole} />;
       return <div className="p-20 text-center font-black text-gray-300 uppercase tracking-widest">No Active Operators Enrolled</div>;
     }
@@ -444,6 +457,7 @@ const App: React.FC = () => {
   };
 
   const showSidebar = (isAdminAuthenticated || isSuperAdminAuthenticated) || (role === 'mechanic') || (role === 'driver' && (loggedDriver || isAdminAuthenticated));
+  const isWorkEnv = localStorage.getItem('mf_trusted_env') === 'true';
 
   if (loading) return <LoadingScreen />;
 
@@ -465,23 +479,24 @@ const App: React.FC = () => {
       <main className={`flex-1 transition-all duration-300 w-full ${showSidebar ? 'md:ml-64 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8' : ''}`}>
         {showSidebar && (
           <header className="mb-6 md:mb-10 flex flex-wrap justify-between items-center p-4 md:p-5 rounded-2xl md:rounded-[2rem] border sticky top-4 z-20 shadow-sm gap-3 transition-all bg-white/70 backdrop-blur-md border-gray-100">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center space-x-2">
                 <h1 className="text-lg md:text-2xl font-black tracking-tight capitalize truncate text-gray-800">
                   {isSuperAdminAuthenticated && view === 'super-admin' ? 'Master Control' : role === 'admin' ? view.replace('-', ' ') : role === 'mechanic' ? 'Workshop' : `Driver Hub`}
                 </h1>
-                {isAdminAuthenticated && (
-                  <div className="flex items-center space-x-2 ml-4">
+                <div className="flex items-center space-x-2 ml-4">
+                  {isAdminAuthenticated && (
                     <span className="hidden sm:inline-block text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border bg-blue-50 text-blue-500 border-blue-100">
                       {fleetName}
                     </span>
-                    {isSuperAdminAuthenticated && (
-                       <span className="hidden sm:inline-block text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-full uppercase tracking-widest border border-indigo-100">
-                        Provider Link Active
-                      </span>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {isWorkEnv && (
+                    <div className="flex items-center bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full border border-emerald-100 animate-in fade-in duration-500">
+                       <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse"></span>
+                       <span className="text-[9px] font-black uppercase tracking-widest">Work Terminal Active</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -493,11 +508,11 @@ const App: React.FC = () => {
                 role === 'mechanic' ? 'bg-amber-600 shadow-amber-100' : 
                 'bg-green-600 shadow-green-100'
               }`}>
-                {role === 'driver' && (loggedDriver || (isAdminAuthenticated && drivers.length > 0)) ? (
-                  (loggedDriver || drivers[0])?.profilePictureUrl ? (
-                    <img src={(loggedDriver || drivers[0])?.profilePictureUrl} className="w-full h-full object-cover" />
+                {role === 'driver' && (activeDriver) ? (
+                  activeDriver.profilePictureUrl ? (
+                    <img src={activeDriver.profilePictureUrl} className="w-full h-full object-cover" />
                   ) : (
-                    (loggedDriver || drivers[0])?.name.substring(0, 2).toUpperCase()
+                    activeDriver.name.substring(0, 2).toUpperCase()
                   )
                 ) : (
                   isSuperAdminAuthenticated ? 'MA' : isAdminAuthenticated ? 'AD' : role === 'mechanic' ? 'ME' : 'AS'
