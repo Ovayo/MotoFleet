@@ -40,6 +40,9 @@ export interface Driver {
   enatisVerified?: boolean;
   contactVerified?: boolean;
   profilePictureUrl?: string;
+  licenseImageUrl?: string; // Digital copy of license
+  pdpImageUrl?: string;     // Digital copy of PDP
+  idImageUrl?: string;      // Digital copy of ID/Passport
   weeklyTarget?: number; // Custom rental target (e.g. 600 or 650)
   isArchived?: boolean; // For operators no longer working
 }
@@ -114,4 +117,4 @@ export interface FleetContext {
   isCloudSyncing: boolean;
 }
 
-export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'mechanic-portal' | 'fines' | 'communications' | 'incidents' | 'system' | 'super-admin';
+export type View = 'dashboard' | 'fleet' | 'drivers' | 'payments' | 'maintenance' | 'driver-profile' | 'driver-wallet' | 'driver-vehicle' | 'driver-safety' | 'driver-documents' | 'mechanic-portal' | 'fines' | 'communications' | 'incidents' | 'system' | 'super-admin';

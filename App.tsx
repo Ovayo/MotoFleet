@@ -414,6 +414,12 @@ const App: React.FC = () => {
             isAdminViewing={isAdminAuthenticated}
             allDrivers={drivers}
             onAdminSwitchDriver={(d) => setLoggedDriver(d)}
+            activeTab={
+              view === 'driver-wallet' ? 'payments' :
+              view === 'driver-vehicle' ? 'vehicle' :
+              view === 'driver-safety' ? 'safety' : 
+              view === 'driver-documents' ? 'documents' : 'overview'
+            }
           />
         );
       }

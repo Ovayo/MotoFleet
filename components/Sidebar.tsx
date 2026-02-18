@@ -71,7 +71,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'mechanic-portal', label: 'Technical', icon: '🛠️' },
     { id: 'maintenance', label: 'History', icon: '📜' },
   ] : [
-    { id: 'driver-profile', label: 'My Portfolio', icon: '👤' },
+    { id: 'driver-profile', label: 'Home Hub', icon: '🏠' },
+    { id: 'driver-wallet', label: 'My Wallet', icon: '💰' },
+    { id: 'driver-documents', label: 'Documents', icon: '📄' },
+    { id: 'driver-vehicle', label: 'My Vehicle', icon: '🏍️' },
+    { id: 'driver-safety', label: 'Safety Log', icon: '🛡️' },
   ];
 
   const themeColor = isSuperAdmin ? 'indigo' : role === 'admin' ? 'blue' : role === 'mechanic' ? 'amber' : 'green';
@@ -99,18 +103,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const NavIconTile = ({ icon, isActive, isNested = false }: { icon: string, isActive: boolean, isNested?: boolean }) => (
-    <div className={`
-      shrink-0 flex items-center justify-center transition-all duration-300
-      ${isNested ? 'w-7 h-7 rounded-lg text-xs' : 'w-9 h-9 rounded-xl text-lg'}
-      ${isActive 
-        ? `${currentTheme.bg} text-white shadow-lg ${currentTheme.shadow} scale-110` 
-        : `bg-gray-100/80 text-gray-400 group-hover:bg-gray-200 group-hover:text-gray-600`}
-    `}>
-      {icon}
-    </div>
-  );
-
   const renderSidebarItem = (item: MenuItem | MenuGroup, isNested = false) => {
     if ('children' in item) {
       const isOpen = openGroups.includes(item.id);
@@ -120,19 +112,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div key={item.id} className="space-y-1">
           <button
             onClick={() => toggleGroup(item.id)}
-            className={`w-full group flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all ${
+            className={`w-full group flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${
               isAnyChildActive ? 'bg-gray-50/80' : 'hover:bg-gray-50/50'
             }`}
           >
-            <div className="flex items-center space-x-3">
-              <NavIconTile icon={item.icon} isActive={isAnyChildActive} isNested={false} />
-              <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${isAnyChildActive ? 'text-gray-800' : 'text-gray-400 group-hover:text-gray-600'}`}>{item.label}</span>
+            <div className="flex items-center">
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${isAnyChildActive ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>{item.label}</span>
             </div>
             <span className={`text-[8px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} text-gray-300`}>▼</span>
           </button>
           
           {isOpen && (
-            <div className="ml-5 pl-4 border-l border-gray-100 space-y-1.5 py-1">
+            <div className="ml-4 pl-4 border-l border-gray-100 space-y-1 py-1">
               {item.children.map(child => renderSidebarItem(child, true))}
             </div>
           )}
@@ -145,14 +136,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => { setView(item.id); setShowMoreMenu(false); }}
-        className={`w-full group flex items-center space-x-3 px-3 py-2.5 rounded-2xl transition-all ${
+        className={`w-full group flex items-center px-4 py-2 rounded-xl transition-all ${
           isActive 
-            ? 'bg-white shadow-sm ring-1 ring-gray-100' 
-            : 'hover:bg-gray-50/50'
+            ? `${currentTheme.bg} shadow-md` 
+            : 'hover:bg-gray-50/80'
         }`}
       >
-        <NavIconTile icon={item.icon} isActive={isActive} isNested={isNested} />
-        <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${isActive ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>{item.label}</span>
+        <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-900'}`}>{item.label}</span>
       </button>
     );
   };
@@ -160,37 +150,43 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-xl border-t border-gray-100 px-3 py-3 safe-area-bottom shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-2xl border-t border-gray-100 px-2 py-4 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-around">
-          <MobileNavItem icon="📈" label="Hub" isActive={activeView === 'dashboard'} onClick={() => setView('dashboard')} currentTheme={currentTheme} />
-          <MobileNavItem icon="🏍️" label="Fleet" isActive={activeView === 'fleet'} onClick={() => setView('fleet')} currentTheme={currentTheme} />
-          <MobileNavItem icon="🆔" label="Staff" isActive={activeView === 'drivers'} onClick={() => setView('drivers')} currentTheme={currentTheme} />
-          <MobileNavItem icon="💰" label="Pay" isActive={activeView === 'payments'} onClick={() => setView('payments')} currentTheme={currentTheme} />
-          <MobileNavItem 
-            icon="🔮" 
-            label="More" 
-            isActive={showMoreMenu} 
-            onClick={() => setShowMoreMenu(!showMoreMenu)} 
-            currentTheme={currentTheme} 
-          />
+          {role === 'driver' ? (
+            <>
+              <MobileNavItem label="Home" isActive={activeView === 'driver-profile'} onClick={() => setView('driver-profile')} currentTheme={currentTheme} />
+              <MobileNavItem label="Wallet" isActive={activeView === 'driver-wallet'} onClick={() => setView('driver-wallet')} currentTheme={currentTheme} />
+              <MobileNavItem label="Docs" isActive={activeView === 'driver-documents'} onClick={() => setView('driver-documents')} currentTheme={currentTheme} />
+              <MobileNavItem label="Vehicle" isActive={activeView === 'driver-vehicle'} onClick={() => setView('driver-vehicle')} currentTheme={currentTheme} />
+              <MobileNavItem label="More" isActive={showMoreMenu} onClick={() => setShowMoreMenu(!showMoreMenu)} currentTheme={currentTheme} />
+            </>
+          ) : (
+            <>
+              <MobileNavItem label="Hub" isActive={activeView === 'dashboard'} onClick={() => setView('dashboard')} currentTheme={currentTheme} />
+              <MobileNavItem label="Fleet" isActive={activeView === 'fleet'} onClick={() => setView('fleet')} currentTheme={currentTheme} />
+              <MobileNavItem label="Staff" isActive={activeView === 'drivers'} onClick={() => setView('drivers')} currentTheme={currentTheme} />
+              <MobileNavItem label="Pay" isActive={activeView === 'payments'} onClick={() => setView('payments')} currentTheme={currentTheme} />
+              <MobileNavItem label="More" isActive={showMoreMenu} onClick={() => setShowMoreMenu(!showMoreMenu)} currentTheme={currentTheme} />
+            </>
+          )}
         </div>
 
-        {/* Mobile More Menu - Parent/Child Structure */}
+        {/* Mobile More Menu */}
         {showMoreMenu && (
-          <div ref={moreMenuRef} className="absolute bottom-[calc(100%+16px)] left-4 right-4 bg-white/98 backdrop-blur-2xl rounded-[2.5rem] p-6 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] border border-gray-100 animate-in slide-in-from-bottom-6 duration-300 max-h-[70vh] overflow-y-auto no-scrollbar">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-50 pb-4">
-              <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Application Matrix</p>
-              <button onClick={() => setShowMoreMenu(false)} className="text-gray-300 hover:text-gray-900 text-3xl transition-colors">&times;</button>
+          <div ref={moreMenuRef} className="absolute bottom-[calc(100%+20px)] left-4 right-4 bg-white/98 backdrop-blur-2xl rounded-[3rem] p-8 shadow-[0_-25px_60px_rgba(0,0,0,0.15)] border border-gray-100 animate-in slide-in-from-bottom-8 duration-300 max-h-[75vh] overflow-y-auto no-scrollbar">
+            <div className="flex justify-between items-center mb-8 border-b border-gray-50 pb-4">
+              <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">System Navigator</p>
+              <button onClick={() => setShowMoreMenu(false)} className="text-gray-300 hover:text-gray-900 text-4xl leading-none transition-colors">&times;</button>
             </div>
             <div className="space-y-2">
               {menuStructure.map(item => renderSidebarItem(item))}
             </div>
             
             {!hideSwitcher && isAdminAuthenticated && (
-              <div className="mt-8 pt-6 border-t border-gray-50 grid grid-cols-3 gap-2">
-                <button onClick={() => onSwitchMode('admin')} className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-tighter transition-all ${role === 'admin' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}>Admin</button>
-                <button onClick={() => onSwitchMode('mechanic')} className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-tighter transition-all ${role === 'mechanic' ? 'bg-amber-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}>Mechanic</button>
-                <button onClick={() => onSwitchMode('driver')} className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-tighter transition-all ${role === 'driver' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}>Driver</button>
+              <div className="mt-10 pt-8 border-t border-gray-50 grid grid-cols-3 gap-3">
+                <button onClick={() => onSwitchMode('admin')} className={`py-4 rounded-2xl text-[9px] font-black uppercase tracking-tight transition-all ${role === 'admin' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'bg-gray-50 text-gray-400'}`}>Admin</button>
+                <button onClick={() => onSwitchMode('mechanic')} className={`py-4 rounded-2xl text-[9px] font-black uppercase tracking-tight transition-all ${role === 'mechanic' ? 'bg-amber-600 text-white shadow-xl shadow-amber-100' : 'bg-gray-50 text-gray-400'}`}>Mechanic</button>
+                <button onClick={() => onSwitchMode('driver')} className={`py-4 rounded-2xl text-[9px] font-black uppercase tracking-tight transition-all ${role === 'driver' ? 'bg-green-600 text-white shadow-xl shadow-green-100' : 'bg-gray-50 text-gray-400'}`}>Driver</button>
               </div>
             )}
           </div>
@@ -210,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
           
-          <nav className="space-y-2 flex-1 overflow-y-auto pr-2 no-scrollbar">
+          <nav className="space-y-1.5 flex-1 overflow-y-auto pr-2 no-scrollbar">
             {menuStructure.map(item => renderSidebarItem(item))}
           </nav>
 
@@ -231,25 +227,19 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 const MobileNavItem: React.FC<{ 
-  icon: string, 
   label: string, 
   isActive: boolean, 
   onClick: () => void, 
   currentTheme: { bg: string, text: string, lightBg: string } 
-}> = ({ icon, label, isActive, onClick, currentTheme }) => {
+}> = ({ label, isActive, onClick, currentTheme }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center py-1 group transition-all duration-300 ${isActive ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
+      className={`flex flex-col items-center justify-center px-1 py-2 group transition-all duration-300 ${isActive ? 'scale-105' : 'opacity-60 hover:opacity-100'}`}
     >
-      <div className={`
-        w-11 h-11 flex items-center justify-center rounded-2xl transition-all duration-500 mb-1.5
-        ${isActive ? `${currentTheme.bg} text-white shadow-xl shadow-current-theme ring-4 ring-white` : 'bg-gray-100 text-gray-400 group-active:scale-90'}
-      `}>
-        <span className={`text-xl ${isActive ? 'animate-bounce-short' : ''}`}>{icon}</span>
-      </div>
-      <span className={`text-[8px] font-black uppercase tracking-tighter ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+      <span className={`text-[9px] font-black uppercase tracking-widest text-center transition-colors ${isActive ? currentTheme.text : 'text-gray-500'}`}>
         {label}
+        {isActive && <div className={`h-0.5 w-full ${currentTheme.bg} mt-1 rounded-full shadow-sm shadow-current-theme animate-in fade-in zoom-in duration-500`}></div>}
       </span>
     </button>
   );

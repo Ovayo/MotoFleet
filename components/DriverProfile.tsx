@@ -30,6 +30,7 @@ interface DriverProfileProps {
   isAdminViewing?: boolean;
   allDrivers?: Driver[]; 
   onAdminSwitchDriver?: (driver: Driver) => void; 
+  activeTab: 'overview' | 'payments' | 'vehicle' | 'safety' | 'documents';
 }
 
 const DriverProfile: React.FC<DriverProfileProps> = ({ 
@@ -47,12 +48,16 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
   weeklyTarget,
   isAdminViewing = false,
   allDrivers = [],
-  onAdminSwitchDriver
+  onAdminSwitchDriver,
+  activeTab = 'overview'
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const licenseFileInputRef = useRef<HTMLInputElement>(null);
+  const pdpFileInputRef = useRef<HTMLInputElement>(null);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
   const logFileInputRef = useRef<HTMLInputElement>(null);
   const accidentFileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'vehicle' | 'safety'>('overview');
+  
   const [showLogForm, setShowLogForm] = useState(false);
   const [showFineForm, setShowFineForm] = useState(false);
   const [showAccidentForm, setShowAccidentForm] = useState(false);
@@ -174,6 +179,19 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     }
   };
 
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'licenseImageUrl' | 'pdpImageUrl' | 'idImageUrl') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => onUpdateDriver({ ...driver, [field]: reader.result as string });
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleExpiryUpdate = (val: string, field: 'licenseExpiry' | 'pdpExpiry') => {
+    onUpdateDriver({ ...driver, [field]: val });
+  };
+
   const handleAccidentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -214,6 +232,15 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
     if (diff < 0) return 'expired';
     if (diff < 30) return 'warning';
     return 'valid';
+  };
+
+  const getDocStatus = (expiry?: string) => {
+    if (!expiry) return { label: 'MISSING', color: 'text-red-500 bg-red-50' };
+    const exp = new Date(expiry);
+    const diff = (exp.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
+    if (diff < 0) return { label: 'EXPIRED', color: 'text-red-600 bg-red-50 border-red-100' };
+    if (diff < 30) return { label: 'EXPIRING SOON', color: 'text-amber-600 bg-amber-50 border-amber-100' };
+    return { label: 'VALID', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' };
   };
 
   return (
@@ -298,27 +325,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
         </div>
       </div>
 
-      {/* Enhanced Tab Navigation */}
-      <div className="flex bg-white/80 backdrop-blur-xl p-1.5 rounded-[2.5rem] border border-gray-100 shadow-xl w-full md:w-fit mx-auto sticky top-4 z-40">
-        {[
-            { id: 'overview', icon: '🏠', label: 'Home' },
-            { id: 'payments', icon: '💰', label: 'Wallet' },
-            { id: 'vehicle', icon: '🏍️', label: 'Vehicle' },
-            { id: 'safety', icon: '🛡️', label: 'Safety' },
-        ].map(tab => (
-            <button 
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)} 
-                className={`px-6 md:px-10 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                    activeTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-105' : 'text-gray-400 hover:text-emerald-600'
-                }`}
-            >
-                <span className="text-lg">{tab.icon}</span>
-                <span className="hidden md:inline">{tab.label}</span>
-            </button>
-        ))}
-      </div>
-
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
         {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -340,7 +346,6 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Maintenance Index</p>
                         <h3 className="text-4xl font-black text-gray-800">Health: Good</h3>
                         <p className="text-[9px] text-gray-400 font-black uppercase mt-3 tracking-widest">Disk Status: {getDiskExpiryStatus().toUpperCase()}</p>
-                        <button onClick={() => setActiveTab('vehicle')} className="mt-4 text-[9px] font-black text-emerald-600 uppercase hover:underline">Full Asset Report →</button>
                     </div>
 
                     <div className="bg-gray-900 p-8 rounded-[3rem] shadow-2xl text-white relative overflow-hidden group">
@@ -350,43 +355,11 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                             R{stats.totalUnpaidFines}
                         </h3>
                         <p className="text-[9px] text-white/30 font-black uppercase mt-3 tracking-widest">Active Infringements: {stats.driverFines.filter(f => f.status === 'unpaid').length}</p>
-                        <button onClick={() => setActiveTab('safety')} className="mt-4 text-[9px] font-black text-white/60 uppercase hover:underline">Settle Outstanding →</button>
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-[3rem] border border-gray-100">
-                    <h4 className="text-xs font-black text-gray-800 uppercase tracking-[0.2em] mb-8 flex items-center">
-                        <span className="mr-3">📡</span> Live Operational Updates
-                    </h4>
-                    <div className="space-y-4">
-                        <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                                <span className="text-2xl">✅</span>
-                                <div>
-                                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-tight">Technical Compliance</p>
-                                    <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">Vehicle eNaTIS status is currently valid.</p>
-                                </div>
-                            </div>
-                            <span className="text-[8px] font-black text-emerald-400">ACTIVE</span>
-                        </div>
-                        <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                                <span className="text-2xl">📅</span>
-                                <div>
-                                    <p className="text-[10px] font-black text-blue-800 uppercase tracking-tight">Upcoming License Renewal</p>
-                                    <p className="text-[9px] font-bold text-blue-600 uppercase mt-0.5">License Disk expires on {bike?.licenseDiskExpiry || 'N/A'}.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {activeTab === 'payments' && (
-            <div className="space-y-6">
-                {/* Community Leaderboard Hook */}
-                <div className="bg-gray-950 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl mb-8">
+                {/* Fleet Community Standing */}
+                <div className="bg-gray-950 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl">
                     <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
                     <div className="relative z-10">
                         <div className="flex justify-between items-center mb-10">
@@ -425,6 +398,185 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
                     </div>
                 </div>
 
+                <div className="bg-white p-8 rounded-[3rem] border border-gray-100">
+                    <h4 className="text-xs font-black text-gray-800 uppercase tracking-[0.2em] mb-8 flex items-center">
+                        <span className="mr-3">📡</span> Live Operational Updates
+                    </h4>
+                    <div className="space-y-4">
+                        <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <span className="text-2xl">✅</span>
+                                <div>
+                                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-tight">Technical Compliance</p>
+                                    <p className="text-[9px] font-bold text-emerald-600 uppercase mt-0.5">Vehicle eNaTIS status is currently valid.</p>
+                                </div>
+                            </div>
+                            <span className="text-[8px] font-black text-emerald-400">ACTIVE</span>
+                        </div>
+                        <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <span className="text-2xl">📅</span>
+                                <div>
+                                    <p className="text-[10px] font-black text-blue-800 uppercase tracking-tight">Upcoming License Renewal</p>
+                                    <p className="text-[9px] font-bold text-blue-600 uppercase mt-0.5">License Disk expires on {bike?.licenseDiskExpiry || 'N/A'}.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'documents' && (
+            <div className="space-y-8 pb-10">
+                <div className="bg-white p-8 md:p-12 rounded-[3rem] border border-gray-100 shadow-sm">
+                    <div className="mb-10">
+                        <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Compliance Vault</h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Official Digital Credentials Registry</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* License Copy */}
+                        <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 flex flex-col h-full group hover:bg-white hover:shadow-xl transition-all">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🪪</div>
+                                {driver.licenseExpiry && (
+                                    <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${getDocStatus(driver.licenseExpiry).color}`}>
+                                        {getDocStatus(driver.licenseExpiry).label}
+                                    </span>
+                                )}
+                            </div>
+                            <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight mb-2">Driver's License</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-8">Official South African License Copy</p>
+                            
+                            <div className="mt-auto space-y-4">
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100">
+                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-1">Expiry Date</p>
+                                    <input 
+                                        type="date" 
+                                        value={driver.licenseExpiry || ''} 
+                                        onChange={(e) => handleExpiryUpdate(e.target.value, 'licenseExpiry')}
+                                        className="w-full text-xs font-bold text-gray-800 outline-none bg-transparent"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => licenseFileInputRef.current?.click()}
+                                        className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        {driver.licenseImageUrl ? 'Update Copy' : 'Upload Copy'}
+                                    </button>
+                                    {driver.licenseImageUrl && (
+                                        <button 
+                                            onClick={() => setViewingAttachment(driver.licenseImageUrl!)}
+                                            className="px-5 bg-blue-600 text-white rounded-xl shadow-lg flex items-center justify-center"
+                                        >
+                                            👁️
+                                        </button>
+                                    )}
+                                </div>
+                                <input type="file" ref={licenseFileInputRef} className="hidden" accept="image/*" onChange={(e) => handleDocumentUpload(e, 'licenseImageUrl')} />
+                            </div>
+                        </div>
+
+                        {/* PDP Certificate */}
+                        <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 flex flex-col h-full group hover:bg-white hover:shadow-xl transition-all">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🚚</div>
+                                {driver.pdpExpiry && (
+                                    <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${getDocStatus(driver.pdpExpiry).color}`}>
+                                        {getDocStatus(driver.pdpExpiry).label}
+                                    </span>
+                                )}
+                            </div>
+                            <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight mb-2">PDP Certificate</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-8">Professional Driving Permit</p>
+                            
+                            <div className="mt-auto space-y-4">
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100">
+                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-1">Expiry Date</p>
+                                    <input 
+                                        type="date" 
+                                        value={driver.pdpExpiry || ''} 
+                                        onChange={(e) => handleExpiryUpdate(e.target.value, 'pdpExpiry')}
+                                        className="w-full text-xs font-bold text-gray-800 outline-none bg-transparent"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => pdpFileInputRef.current?.click()}
+                                        className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        {driver.pdpImageUrl ? 'Update Copy' : 'Upload Copy'}
+                                    </button>
+                                    {driver.pdpImageUrl && (
+                                        <button 
+                                            onClick={() => setViewingAttachment(driver.pdpImageUrl!)}
+                                            className="px-5 bg-emerald-600 text-white rounded-xl shadow-lg flex items-center justify-center"
+                                        >
+                                            👁️
+                                        </button>
+                                    )}
+                                </div>
+                                <input type="file" ref={pdpFileInputRef} className="hidden" accept="image/*" onChange={(e) => handleDocumentUpload(e, 'pdpImageUrl')} />
+                            </div>
+                        </div>
+
+                        {/* ID Copy */}
+                        <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 flex flex-col h-full group hover:bg-white hover:shadow-xl transition-all">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🇿🇦</div>
+                            </div>
+                            <h4 className="text-sm font-black text-gray-800 uppercase tracking-tight mb-2">Identity Document</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-8">South African ID or Passport</p>
+                            
+                            <div className="mt-auto space-y-4">
+                                <div className="p-4 bg-white rounded-2xl border border-gray-100">
+                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-1">ID Number</p>
+                                    <p className="text-xs font-bold text-gray-800">{driver.idNumber}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => idFileInputRef.current?.click()}
+                                        className="flex-1 bg-gray-900 text-white py-3.5 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        {driver.idImageUrl ? 'Update Copy' : 'Upload Copy'}
+                                    </button>
+                                    {driver.idImageUrl && (
+                                        <button 
+                                            onClick={() => setViewingAttachment(driver.idImageUrl!)}
+                                            className="px-5 bg-purple-600 text-white rounded-xl shadow-lg flex items-center justify-center"
+                                        >
+                                            👁️
+                                        </button>
+                                    )}
+                                </div>
+                                <input type="file" ref={idFileInputRef} className="hidden" accept="image/*" onChange={(e) => handleDocumentUpload(e, 'idImageUrl')} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-gray-950 p-8 md:p-12 rounded-[3rem] text-white relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div>
+                            <h4 className="text-xl font-black uppercase tracking-tight">Security Protocol</h4>
+                            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">All documents are stored within your encrypted hub silo.</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <div className="flex items-center px-4 py-2 bg-white/5 rounded-full border border-white/10">
+                                <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></span>
+                                <span className="text-[8px] font-black uppercase tracking-widest">Vault Encrypted</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'payments' && (
+            <div className="space-y-6">
                 <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-8 md:p-12">
                     <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-12">
                         <div className="max-w-md">
@@ -708,11 +860,11 @@ const DriverProfile: React.FC<DriverProfileProps> = ({
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4">
            <div className="bg-white rounded-[3rem] overflow-hidden max-w-4xl w-full flex flex-col animate-in zoom-in duration-300">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                 <h3 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">Digital Evidence Viewer</h3>
+                 <h3 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">Digital Document Viewer</h3>
                  <button onClick={() => setViewingAttachment(null)} className="text-gray-400 hover:text-gray-900 text-4xl leading-none">&times;</button>
               </div>
               <div className="bg-gray-100 p-6 flex items-center justify-center min-h-[50vh] max-h-[75vh] overflow-hidden">
-                 <img src={viewingAttachment} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" alt="Evidence" />
+                 <img src={viewingAttachment} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" alt="Document" />
               </div>
            </div>
         </div>
