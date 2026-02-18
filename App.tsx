@@ -439,15 +439,6 @@ const App: React.FC = () => {
         return <AccidentLog bikes={bikes} drivers={drivers} accidents={accidents} onAddAccident={handleAddAccident} onUpdateAccident={handleUpdateAccident} onUpdateStatus={handleUpdateAccidentStatus} />;
       case 'communications':
         return <NotificationCenter notifications={notifications} drivers={drivers} bikes={bikes} onTriggerAutomations={triggerAutomations} onClearNotifications={handleClearNotifications} isSyncing={isCloudSyncing} />;
-      case 'system':
-        return (
-          <DataManagement 
-            fleetId={fleetId || 'default'} 
-            fleetName={fleetName} 
-            data={{ bikes, drivers, payments, maintenance, fines, accidents, workshops, notifications }}
-            setters={{ setBikes, setDrivers, setPayments, setMaintenance, setFines, setAccidents, setWorkshops, setNotifications }}
-          />
-        );
       default:
         return <Dashboard bikes={bikes} drivers={drivers} payments={payments} maintenance={maintenance} weeklyTarget={WEEKLY_TARGET} />;
     }

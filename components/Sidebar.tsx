@@ -65,7 +65,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'maintenance', label: 'Service Log', icon: '🔧' },
         { id: 'incidents', label: 'Accidents', icon: '⚠️' },
         { id: 'communications', label: 'Comms Hub', icon: '📡' },
-        { id: 'system', label: 'System Sync', icon: '🔄' },
       ]
     }
   ] : role === 'mechanic' ? [
