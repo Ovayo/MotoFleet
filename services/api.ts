@@ -11,6 +11,7 @@ export class MotoFleetCloud {
 
   constructor(fleetId: string) {
     this.fleetId = fleetId;
+    console.log(`[Cloud Engine] Initialized for Fleet Identity: ${fleetId}`);
   }
 
   /**
@@ -34,12 +35,17 @@ export class MotoFleetCloud {
       if (data && data !== '[]' && data !== '{}' && data !== 'null') return data;
     }
 
-    // 2. Brute force search: Find ANY key that ends with or contains the targetKey
+    // 2. Brute force search: Find ANY key that ends with or contains the targetKey and app identifier
     for (const storageKey of keys) {
-      if (storageKey.toLowerCase().endsWith(targetKey.toLowerCase())) {
+      const normalizedKey = storageKey.toLowerCase();
+      const normalizedTarget = targetKey.toLowerCase();
+      
+      // Look for keys that have the target name and seem to belong to this app
+      if (normalizedKey.includes(normalizedTarget) && 
+         (normalizedKey.includes('moto') || normalizedKey.includes('fleet') || normalizedKey.includes('mf_'))) {
         const data = localStorage.getItem(storageKey);
-        if (data && data !== '[]' && data !== '{}' && data !== 'null') {
-          console.log(`[Recovery Engine] Brute-force match found: "${storageKey}" -> Migrating to silo...`);
+        if (data && data !== '[]' && data !== '{}' && data !== 'null' && data.length > 10) {
+          console.log(`[Recovery Engine] Brute-force match found: "${storageKey}" -> Preparing migration...`);
           return data;
         }
       }
@@ -57,6 +63,7 @@ export class MotoFleetCloud {
       if (!saved || saved === '[]' || saved === 'null') {
         const recovered = this.findLegacyDataBruteForce(key);
         if (recovered) {
+          console.log(`[Cloud Sync] Recovered data for "${key}" from external silo. Saving to current workspace.`);
           // Immediately secure the recovered data in the new Silo
           localStorage.setItem(siloKey, recovered);
           saved = recovered;
@@ -70,7 +77,8 @@ export class MotoFleetCloud {
             return;
           }
           const parsed = JSON.parse(saved);
-          // Return the array, ensuring it's not null or empty if it's supposed to have initial data
+          
+          // If we found something but it's empty, and we have defaults, use defaults
           if ((!parsed || (Array.isArray(parsed) && parsed.length === 0)) && defaultValue) {
              resolve(defaultValue);
           } else {
@@ -85,12 +93,13 @@ export class MotoFleetCloud {
   }
 
   async persist<T>(key: string, data: T): Promise<void> {
+    const siloKey = this.getSiloKey(key);
+    
     // SECURITY: Prevent overwriting a non-empty storage with an empty array
-    // during the critical hydration phase.
     if (Array.isArray(data) && data.length === 0) {
-      const existing = localStorage.getItem(this.getSiloKey(key));
+      const existing = localStorage.getItem(siloKey);
       if (existing && existing !== '[]' && existing !== 'null') {
-        console.warn(`[Persistence Guard] Blocked empty save to protect existing "${key}" data.`);
+        console.warn(`[Persistence Guard] Blocked empty save to protect existing "${key}" data in silo ${this.fleetId}.`);
         return;
       }
     }
@@ -98,9 +107,9 @@ export class MotoFleetCloud {
     return new Promise((resolve) => {
       setTimeout(() => {
         try {
-          localStorage.setItem(this.getSiloKey(key), JSON.stringify(data));
+          localStorage.setItem(siloKey, JSON.stringify(data));
         } catch (e) {
-          console.error(`[Cloud Sync] Persistence failed:`, e);
+          console.error(`[Cloud Sync] Persistence failed for ${key}:`, e);
         }
         resolve();
       }, 50);
@@ -111,7 +120,6 @@ export class MotoFleetCloud {
     const { drivers = [], payments = [], weeklyTarget } = data;
     const notifications: any[] = [];
     
-    // Filter out drivers who are no longer working
     const activeDrivers = drivers.filter((d: any) => !d.isArchived);
     
     activeDrivers.forEach((d: any) => {
