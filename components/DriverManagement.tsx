@@ -219,7 +219,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, setDrivers
 
   const DriverModal = () => (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in duration-300">
+      <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in duration-300">
         <form onSubmit={handleSubmit}>
           <div className="p-8 md:p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
             <div>

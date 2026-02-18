@@ -269,12 +269,9 @@ const App: React.FC = () => {
     }, 450);
   };
 
-  const handleDriverLogin = (contact: string, passcode: string) => {
+  const handleDriverLogin = (contact: string) => {
     const normalizedInput = contact.replace(/\s/g, '');
-    const driver = drivers.find(d => 
-      d.contact.replace(/\s/g, '') === normalizedInput && 
-      (d.passcode === passcode || (!d.passcode && passcode === '1234'))
-    );
+    const driver = drivers.find(d => d.contact.replace(/\s/g, '') === normalizedInput);
     
     if (driver) {
       setIsTransitioning(true);

@@ -2,21 +2,19 @@
 import React, { useState } from 'react';
 
 interface DriverLoginProps {
-  onLogin: (contact: string, passcode: string) => boolean;
+  onLogin: (contact: string) => boolean;
   onSwitchRole?: (role: 'admin' | 'driver' | 'mechanic') => void;
 }
 
 const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
   const [contact, setContact] = useState('');
-  const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = onLogin(contact, passcode);
+    const success = onLogin(contact);
     if (!success) {
       setError(true);
-      setPasscode(''); // Clear passcode on fail
       setTimeout(() => setError(false), 3000);
     }
   };
@@ -65,20 +63,8 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
                   placeholder="071 234 5678"
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-emerald-500 focus:bg-white font-bold text-lg transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Access PIN / Passcode</label>
-                <input
-                  type="password"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="••••"
-                  className={`w-full text-center text-2xl font-black tracking-[0.4em] py-5 bg-gray-50 border-2 rounded-2xl outline-none transition-all ${
-                    error ? 'border-red-500 bg-red-50' : 'border-gray-100 focus:border-emerald-500 focus:bg-white'
+                  className={`w-full px-6 py-4 bg-gray-50 border rounded-2xl outline-none focus:border-emerald-500 focus:bg-white font-bold text-lg transition-all ${
+                    error ? 'border-red-500 bg-red-50' : 'border-gray-100'
                   }`}
                   required
                 />
@@ -86,7 +72,7 @@ const DriverLogin: React.FC<DriverLoginProps> = ({ onLogin, onSwitchRole }) => {
 
               {error && (
                 <p className="text-red-500 text-[10px] font-black text-center mt-3 uppercase tracking-widest animate-pulse">
-                  Invalid Credentials. Unauthorized access blocked.
+                  Unrecognized Terminal. Unauthorized access blocked.
                 </p>
               )}
             </div>
